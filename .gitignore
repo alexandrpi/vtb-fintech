@@ -48,3 +48,5 @@ Temporary Items
 
 # PyCharm project files
 .idea
+/test.py
+/financial_db_worker/__pycache__
