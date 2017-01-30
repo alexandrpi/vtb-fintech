@@ -16,7 +16,8 @@ class FDBWorker:
 
     def create_schema(self, name):
         """Метод для создания схемы для нового пользователя"""
-        pass
+        with open('fs_new_schema.sql', 'r') as schema_sql:
+            self.query(schema_sql.read().format(username=name))
 
 
 class TableWorker:
