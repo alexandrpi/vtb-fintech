@@ -1,5 +1,6 @@
 import pg
 import datetime
+from . import helpers
 
 
 class FDBWorker:
@@ -14,6 +15,7 @@ class FDBWorker:
         self.query = self.__connection.query
 
     def create_schema(self, name):
+        """Метод для создания схемы для нового пользователя"""
         pass
 
 
@@ -24,18 +26,19 @@ class TableWorker:
         self.__db = db_connection
         self.__schema = schema
         self.__table = table
-        columns_query = 'SELECT column_name FROM information_schema.columns WHERE table_name=\'{table}\''
-        columns = self.__db.query(columns_query.format(table=self.__table)).getresult()
-        self._columns = ['\"{}\"'.format(c[0]) for c in columns[1:]]
+        columns_query = 'SELECT column_name FROM information_schema.columns WHERE table_name={table}'
+        columns = self.__db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
+        self._columns = [c[0] for c in columns]
 
     def _insert(self, params):
         template = 'INSERT INTO {schema}."{table}" ({names}) VALUES ({values})'
         self.__db.query(template.format(schema=self.__schema,
-                                        names=', '.join(self._columns),
+                                        names=', '.join(map(helpers.quote2, self._columns[1:])),
                                         table=self.__table,
                                         values=', '.join(map(str, params))))
 
     def _get(self, conditions, columns):
+        """Базовый SELECT-запрос"""
         condition = ''
         if len(conditions) > 0:
             condition = 'WHERE {}'.format(' AND '.join(conditions))
@@ -58,10 +61,10 @@ class OperationsWorker(TableWorker):
         super().__init__(db_connection, 'Operations', schema)
 
     def add_operation(self, total, category_id, comment='', date=datetime.datetime.now()):
-        self._insert([category_id, total, '\'{}\''.format(date), '\'{}\''.format(comment)])
+        self._insert([category_id, total, helpers.quote(date), helpers.quote(comment)])
 
     def get_operations(self, *columns, **conds):
-        fields = ['\"{}\"'.format(c) for c in columns if c in self._columns]
+        fields = [helpers.quote2(c) for c in columns if c in self._columns]
         conditions = []
         if conds:
             conditions = [self.__OPERATION_CONDS[key].format(conds[key]) for key in conds]
