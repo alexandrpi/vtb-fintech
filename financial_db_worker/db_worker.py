@@ -1,5 +1,6 @@
 import pg
 import datetime
+import os
 from . import helpers
 
 
@@ -16,7 +17,7 @@ class FDBWorker:
 
     def create_schema(self, name):
         """Метод для создания схемы для нового пользователя"""
-        with open('financial_db_worker/fs_new_schema.sql', 'r') as schema_sql:
+        with open(os.path.join(os.path.dirname(__file__), 'fs_new_schema.sql'), 'r') as schema_sql:
             self.query(schema_sql.read().format(username=name))
 
 
