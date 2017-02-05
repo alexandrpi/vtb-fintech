@@ -39,11 +39,21 @@ class TableWorker:
                                         table=self.__table,
                                         values=', '.join(map(str, params))))
 
+    def _update(self, conditions, kvals):
+        template = 'UPDATE {schema}."{table}" SET ({keys}) = ({vals}) {condition}'
+        condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
+        keys, vals = [], []
+        for k, v in kvals.items():
+            keys.append(k)
+            vals.append(v)
+        self.__db.query(template.format(schema=self.__schema,
+                                        keys=', '.join(keys),
+                                        vals=', '.join(vals),
+                                        condition=condition))
+
     def _get(self, conditions, columns):
         """Базовый SELECT-запрос"""
-        condition = ''
-        if len(conditions) > 0:
-            condition = 'WHERE {}'.format(' AND '.join(conditions))
+        condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
         template = 'SELECT {columns} FROM {schema}."{table}" {condition}'
         result = self.__db.query(template.format(schema=self.__schema,
                                                  table=self.__table,
@@ -65,9 +75,21 @@ class OperationsWorker(TableWorker):
     def add_operation(self, total, category_id, comment='', date=datetime.datetime.now()):
         self._insert([category_id, total, helpers.quote(date), helpers.quote(comment)])
 
-    def get_operations(self, *columns, **conds):
+    def get_operations(self, cnames=False, *columns, **conds):
         fields = [helpers.quote2(c) for c in columns if c in self._columns]
         conditions = []
         if conds:
             conditions = [self.__OPERATION_CONDS[key].format(conds[key]) for key in conds]
         return self._get(conditions, fields)
+
+
+class AccountWorker(TableWorker):
+    """Класс для работы с таблицей Accounts"""
+    __ACC_CONDS = {'acc_id': '"@Accounts = {}"'}
+
+    def __init__(self, db_connection, schema):
+        super().__init__(db_connection, 'Accounts', schema)
+
+    def load_cash(self, total):
+        """Нужно, наверное, это удалить и сделать начисление прямо в скрипте заполнения свежей схемы"""
+        self._update([self.__ACC_CONDS['acc_id'].format(51)], {'"AccountTotal"': total})
