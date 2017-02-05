@@ -61,7 +61,7 @@ SET default_with_oids = false;
 
 
 CREATE TABLE "Accounts" (
-    "@Accounts" integer DEFAULT nextval(('public.Accounts_@accounts_seq'::text)::regclass) NOT NULL,
+    "@Accounts" serial NOT NULL,
     "Name" text NOT NULL,
     "AccountTotal" double precision NOT NULL
 );
@@ -70,19 +70,8 @@ CREATE TABLE "Accounts" (
 ALTER TABLE "Accounts" OWNER TO postgres;
 
 
-CREATE SEQUENCE "Accounts_@accounts_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    MAXVALUE 2147483647
-    CACHE 1;
-
-
-ALTER TABLE "Accounts_@accounts_seq" OWNER TO postgres;
-
-
 CREATE TABLE "Assets" (
-    "@Assets" integer DEFAULT nextval(('public.Assets_@assets_seq'::text)::regclass) NOT NULL,
+    "@Assets" serial NOT NULL,
     "Name" text NOT NULL,
     "Type" smallint NOT NULL,
     "AssetFormula" text NOT NULL
@@ -92,19 +81,9 @@ CREATE TABLE "Assets" (
 ALTER TABLE "Assets" OWNER TO postgres;
 
 
-CREATE SEQUENCE "Assets_@assets_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    MAXVALUE 2147483647
-    CACHE 1;
-
-
-ALTER TABLE "Assets_@assets_seq" OWNER TO postgres;
-
 
 CREATE TABLE "Categories" (
-    "@Categories" integer DEFAULT nextval(('public.Categories_@categories_seq'::text)::regclass) NOT NULL,
+    "@Categories" serial NOT NULL,
     "Name" text NOT NULL,
 	"CategoryType" smallint NOT NULL
 );
@@ -113,19 +92,8 @@ CREATE TABLE "Categories" (
 ALTER TABLE "Categories" OWNER TO postgres;
 
 
-CREATE SEQUENCE "Categories_@categories_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    MAXVALUE 2147483647
-    CACHE 1;
-
-
-ALTER TABLE "Categories_@categories_seq" OWNER TO postgres;
-
-
 CREATE TABLE "CatsToAccs" (
-    "@CatsToAccs" integer DEFAULT nextval(('public.Catstoaccs_@catstoaccs_seq'::text)::regclass) NOT NULL,
+    "@CatsToAccs" serial NOT NULL,
     "@Categories" integer NOT NULL,
     "@Accounts" integer NOT NULL,
     "OperationType" smallint NOT NULL
@@ -135,19 +103,8 @@ CREATE TABLE "CatsToAccs" (
 ALTER TABLE "CatsToAccs" OWNER TO postgres;
 
 
-CREATE SEQUENCE "Catstoaccs_@catstoaccs_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    MAXVALUE 2147483647
-    CACHE 1;
-
-
-ALTER TABLE "Catstoaccs_@catstoaccs_seq" OWNER TO postgres;
-
-
 CREATE TABLE "Operations" (
-    "@Operations" bigint NOT NULL,
+    "@Operations" bigserial NOT NULL,
     "@Categories" integer NOT NULL,
     "OperationTotal" double precision NOT NULL,
     "OperationDate" timestamp(0) with time zone,
@@ -155,24 +112,7 @@ CREATE TABLE "Operations" (
 );
 
 
-ALTER TABLE "Operations" OWNER TO postgres;
-
-
-CREATE SEQUENCE "Operations_@Operations_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
 ALTER TABLE "Operations_@Operations_seq" OWNER TO postgres;
-
-
-ALTER SEQUENCE "Operations_@Operations_seq" OWNED BY "Operations"."@Operations";
-
-
-ALTER TABLE ONLY "Operations" ALTER COLUMN "@Operations" SET DEFAULT nextval('"Operations_@Operations_seq"'::regclass);
 
 
 ALTER TABLE ONLY "Accounts"

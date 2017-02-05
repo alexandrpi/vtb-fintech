@@ -20,6 +20,22 @@ class FDBWorker:
         with open(os.path.join(os.path.dirname(__file__), 'fs_new_schema.sql'), 'r') as schema_sql:
             self.query(schema_sql.read().format(username=name))
 
+    def deploy_data(self, username, account_sum):
+        """Заполнение таблиц заданной схемы стандартными данными, начисление на счёт первоначальной суммы"""
+        here = os.path.dirname(__file__)
+        with open(os.path.join(here, 'data_deploy.sql'), 'r') as fsdata:
+            self.query(fsdata.read().format(username=username, path=here, account_sum=account_sum))
+
+    def user_exist(self, username):
+        """Проверяет, существует ли пользователь в базе, т.е. есть ли схема с данным именем"""
+        check_sql = 'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'{username}\')'.format(username=username)
+        result = self.query(check_sql)
+        return result.dictresult()[0]['exists']
+
+    def user_delete(self, username):
+        """Удаялет схему пользователя, используется ТОЛЬКО для отладки"""
+        self.query('DROP SCHEMA "{username}" CASCADE'.format(username=username))
+
 
 class TableWorker:
     """Базовый класс для работы с таблицами базы FinancialStatements"""
@@ -64,7 +80,7 @@ class TableWorker:
 
 class OperationsWorker(TableWorker):
     """Класс для работы с таблицей Operations"""
-    __OPERATION_CONDS = {'start_date': '"OperationDate" > \'{}\'',
+    __OP_CONDS = {'start_date': '"OperationDate" > \'{}\'',
                          'end_date': '"OperationDate" < \'{}\'',
                          'total_start': '"OperationTotal" > {}',
                          'total_end': '"OperationTotal" < {}'}
@@ -76,10 +92,11 @@ class OperationsWorker(TableWorker):
         self._insert([category_id, total, helpers.quote(date), helpers.quote(comment)])
 
     def get_operations(self, cnames=False, *columns, **conds):
+        # TODO: доработать стандартный метод _get для использования пользовательских условий
         fields = [helpers.quote2(c) for c in columns if c in self._columns]
         conditions = []
         if conds:
-            conditions = [self.__OPERATION_CONDS[key].format(conds[key]) for key in conds]
+            conditions = [self.__OP_CONDS[key].format(conds[key]) for key in conds]
         return self._get(conditions, fields)
 
 
@@ -90,6 +107,25 @@ class AccountWorker(TableWorker):
     def __init__(self, db_connection, schema):
         super().__init__(db_connection, 'Accounts', schema)
 
-    def load_cash(self, total):
-        """Нужно, наверное, это удалить и сделать начисление прямо в скрипте заполнения свежей схемы"""
-        self._update([self.__ACC_CONDS['acc_id'].format(51)], {'"AccountTotal"': total})
+    def get_categories(self, *columns, **conds):
+        # TODO: стоит вынести этот код в метод _get
+        fields = [helpers.quote2(c) for c in columns if c in self._columns]
+        conditions = []
+        if conds:
+            conditions = [self.__ACC_CONDS[key].format(conds[key]) for key in conds]
+        return self._get(conditions, fields)
+
+
+class CategoriesWorker(TableWorker):
+    """Класс для работы с таблицей Accounts"""
+    __CAT_CONDS = {'cat_id': '"@Categories = {}"'}
+
+    def __init__(self, db_connection, schema):
+        super().__init__(db_connection, 'Categories', schema)
+
+    def get_categories(self, *columns, **conds):
+        fields = [helpers.quote2(c) for c in columns if c in self._columns]
+        conditions = []
+        if conds:
+            conditions = [self.__CAT_CONDS[key].format(conds[key]) for key in conds]
+        return self._get(conditions, fields)
