@@ -40,10 +40,11 @@ class FDBWorker:
 class TableWorker:
     """Базовый класс для работы с таблицами базы FinancialStatements"""
 
-    def __init__(self, db_connection, table, schema='public'):
+    def __init__(self, db_connection, table, conditions, schema='public'):
         self.__db = db_connection
         self.__schema = schema
         self.__table = table
+        self.__conds = conditions
         columns_query = 'SELECT column_name FROM information_schema.columns WHERE table_name={table}'
         columns = self.__db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
         self._columns = [c[0] for c in columns]
@@ -67,65 +68,56 @@ class TableWorker:
                                         vals=', '.join(vals),
                                         condition=condition))
 
-    def _get(self, conditions, columns):
+    def _get(self, *columns, **conds):
         """Базовый SELECT-запрос"""
+        # TODO: доработать стандартный метод _get для использования пользовательских условий (JOIN и т.п.)
+        fields = [helpers.quote2(c) for c in columns if c in self._columns]
+        conditions = []
+        if conds:
+            conditions = [self.__conds[key].format(conds[key]) for key in conds]
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
         template = 'SELECT {columns} FROM {schema}."{table}" {condition}'
         result = self.__db.query(template.format(schema=self.__schema,
                                                  table=self.__table,
-                                                 columns='*' if not len(columns) else ', '.join(columns),
+                                                 columns='*' if not fields else ', '.join(fields),
                                                  condition=condition))
         return result.dictresult()
 
 
 class OperationsWorker(TableWorker):
     """Класс для работы с таблицей Operations"""
-    __OP_CONDS = {'start_date': '"OperationDate" > \'{}\'',
-                         'end_date': '"OperationDate" < \'{}\'',
-                         'total_start': '"OperationTotal" > {}',
-                         'total_end': '"OperationTotal" < {}'}
 
     def __init__(self, db_connection, schema):
-        super().__init__(db_connection, 'Operations', schema)
+        op_conds = {'start_date': '"OperationDate" > \'{}\'',
+                    'end_date': '"OperationDate" < \'{}\'',
+                    'total_start': '"OperationTotal" > {}',
+                    'total_end': '"OperationTotal" < {}'}
+        super().__init__(db_connection, 'Operations',op_conds, schema)
 
     def add_operation(self, total, category_id, comment='', date=datetime.datetime.now()):
         self._insert([category_id, total, helpers.quote(date), helpers.quote(comment)])
 
     def get_operations(self, cnames=False, *columns, **conds):
-        # TODO: доработать стандартный метод _get для использования пользовательских условий
-        fields = [helpers.quote2(c) for c in columns if c in self._columns]
-        conditions = []
-        if conds:
-            conditions = [self.__OP_CONDS[key].format(conds[key]) for key in conds]
-        return self._get(conditions, fields)
+        return self._get(columns, conds)
 
 
 class AccountWorker(TableWorker):
     """Класс для работы с таблицей Accounts"""
-    __ACC_CONDS = {'acc_id': '"@Accounts = {}"'}
 
     def __init__(self, db_connection, schema):
-        super().__init__(db_connection, 'Accounts', schema)
+        acc_conds = {'acc_id': '"@Accounts = {}"'}
+        super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
     def get_categories(self, *columns, **conds):
-        # TODO: стоит вынести этот код в метод _get
-        fields = [helpers.quote2(c) for c in columns if c in self._columns]
-        conditions = []
-        if conds:
-            conditions = [self.__ACC_CONDS[key].format(conds[key]) for key in conds]
-        return self._get(conditions, fields)
+        return self._get(columns, conds)
 
 
 class CategoriesWorker(TableWorker):
-    """Класс для работы с таблицей Accounts"""
-    __CAT_CONDS = {'cat_id': '"@Categories = {}"'}
+    """Класс для работы с таблицей Categories"""
 
     def __init__(self, db_connection, schema):
-        super().__init__(db_connection, 'Categories', schema)
+        cat_conds = {'cat_id': '"@Categories = {}"'}
+        super().__init__(db_connection, 'Categories', cat_conds, schema)
 
     def get_categories(self, *columns, **conds):
-        fields = [helpers.quote2(c) for c in columns if c in self._columns]
-        conditions = []
-        if conds:
-            conditions = [self.__CAT_CONDS[key].format(conds[key]) for key in conds]
-        return self._get(conditions, fields)
+        return self._get(columns, conds)
