@@ -15,12 +15,12 @@ class FDBWorker:
                                   dbname='FinancialStatements')
         self.query = self.__connection.query
 
-    def create_schema(self, name):
+    def __create_schema(self, name):
         """Метод для создания схемы для нового пользователя"""
         with open(os.path.join(os.path.dirname(__file__), 'fs_new_schema.sql'), 'r') as schema_sql:
             self.query(schema_sql.read().format(username=name))
 
-    def deploy_data(self, username, account_sum):
+    def __deploy_data(self, username, account_sum):
         """Заполнение таблиц заданной схемы стандартными данными, начисление на счёт первоначальной суммы"""
         here = os.path.dirname(__file__)
         with open(os.path.join(here, 'data_deploy.sql'), 'r') as fsdata:
@@ -31,6 +31,11 @@ class FDBWorker:
         check_sql = 'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'{username}\')'.format(username=username)
         result = self.query(check_sql)
         return result.dictresult()[0]['exists']
+
+    def create_user(self, username, acccount_sum):
+        """Метод для создания нового пользователя"""
+        self.__create_schema(username)
+        self.__deploy_data(username, acccount_sum)
 
     def user_delete(self, username):
         """Удаялет схему пользователя, используется ТОЛЬКО для отладки"""
@@ -52,7 +57,6 @@ class TableWorker:
         self._columns = [c[0] for c in columns]
 
     def _insert(self, kvals):
-        # TODO: исправить параметры на словарь именованных параметров
         keys, vals = [], []
         for k, v in kvals.items():
             keys.append(k)
@@ -128,6 +132,7 @@ class AccountWorker(TableWorker):
         super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
     def get_accounts(self, *columns, **conds):
+        # TODO: доработать получение счетов в "красивом" виде + суммирование 58 и 59 счетов
         return self._get(*columns, **conds)
 
 
