@@ -44,7 +44,9 @@ class TableWorker:
         self._db = db_connection
         self._schema = schema
         self.__table = table
-        self.__conds = conditions
+        self.__conds = {'ids': '{k}={v}'.format(k='"@{table}"'.format(table=self.__table),
+                                                v='ANY(ARRAY{})')}
+        self.__conds.update(conditions)
         columns_query = 'SELECT DISTINCT column_name FROM information_schema.columns WHERE table_name={table}'
         columns = self._db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
         self._columns = [c[0] for c in columns]
@@ -146,11 +148,10 @@ class AssetsWorker(TableWorker):
         assets_conds = {}
         super().__init__(db_connection, 'Assets', assets_conds, schema)
 
-    def get_balance(self):
+    def get_balance(self, ids=None):
         acc_totals = AccountWorker(self._db, self._schema).get_accounts('@Accounts', 'AccountTotal')
         totals = {'@{:03d}'.format(at['@Accounts']): at['AccountTotal'] for at in acc_totals}
-        assets = self._get()
+        assets = self._get(**({'ids': ids} if ids else {}))
         for a in assets:
-            a['CurrentTotal'] = eval(a['AssetFormula'].format(**totals))
-            del a['AssetFormula']
+            a['CurrentTotal'] = eval(a.pop('AssetFormula').format(**totals))
         return assets
