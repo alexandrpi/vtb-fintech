@@ -41,12 +41,12 @@ class TableWorker:
     """Базовый класс для работы с таблицами базы FinancialStatements"""
 
     def __init__(self, db_connection, table, conditions, schema='public'):
-        self.__db = db_connection
-        self.__schema = schema
+        self._db = db_connection
+        self._schema = schema
         self.__table = table
         self.__conds = conditions
         columns_query = 'SELECT DISTINCT column_name FROM information_schema.columns WHERE table_name={table}'
-        columns = self.__db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
+        columns = self._db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
         self._columns = [c[0] for c in columns]
 
     def _insert(self, kvals):
@@ -56,10 +56,10 @@ class TableWorker:
             keys.append(k)
             vals.append(v)
         template = 'INSERT INTO {schema}."{table}" ({names}) VALUES ({values})'
-        self.__db.query(template.format(schema=self.__schema,
-                                        names=', '.join(map(helpers.quote2, keys)),
-                                        table=self.__table,
-                                        values=', '.join(map(str, vals))))
+        self._db.query(template.format(schema=self._schema,
+                                       names=', '.join(map(helpers.quote2, keys)),
+                                       table=self.__table,
+                                       values=', '.join(map(str, vals))))
 
     def _update(self, conditions, kvals):
         template = 'UPDATE {schema}."{table}" SET ({keys}) = ({vals}) {condition}'
@@ -68,10 +68,10 @@ class TableWorker:
         for k, v in kvals.items():
             keys.append(k)
             vals.append(v)
-        self.__db.query(template.format(schema=self.__schema,
-                                        keys=', '.join(keys),
-                                        vals=', '.join(vals),
-                                        condition=condition))
+        self._db.query(template.format(schema=self._schema,
+                                       keys=', '.join(keys),
+                                       vals=', '.join(vals),
+                                       condition=condition))
 
     def _get(self, *columns, **conds):
         """Базовый SELECT-запрос"""
@@ -82,10 +82,10 @@ class TableWorker:
             conditions = [self.__conds[key].format(conds[key]) for key in conds]
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
         template = 'SELECT {columns} FROM {schema}."{table}" {condition}'
-        result = self.__db.query(template.format(schema=self.__schema,
-                                                 table=self.__table,
-                                                 columns='*' if not fields else ', '.join(fields),
-                                                 condition=condition))
+        result = self._db.query(template.format(schema=self._schema,
+                                                table=self.__table,
+                                                columns='*' if not fields else ', '.join(fields),
+                                                condition=condition))
         return result.dictresult()
 
 
@@ -115,7 +115,7 @@ class OperationsWorker(TableWorker):
         self._insert(kvals)
 
     def get_operations(self, cnames=False, *columns, **conds):
-        return self._get(columns, conds)
+        return self._get(*columns, **conds)
 
 
 class AccountWorker(TableWorker):
@@ -125,8 +125,8 @@ class AccountWorker(TableWorker):
         acc_conds = {'acc_id': '"@Accounts = {}"'}
         super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
-    def get_categories(self, *columns, **conds):
-        return self._get(columns, conds)
+    def get_accounts(self, *columns, **conds):
+        return self._get(*columns, **conds)
 
 
 class CategoriesWorker(TableWorker):
@@ -137,4 +137,20 @@ class CategoriesWorker(TableWorker):
         super().__init__(db_connection, 'Categories', cat_conds, schema)
 
     def get_categories(self, *columns, **conds):
-        return self._get(columns, conds)
+        return self._get(*columns, **conds)
+
+
+class AssetsWorker(TableWorker):
+
+    def __init__(self, db_connection, schema):
+        assets_conds = {}
+        super().__init__(db_connection, 'Assets', assets_conds, schema)
+
+    def get_balance(self):
+        acc_totals = AccountWorker(self._db, self._schema).get_accounts('@Accounts', 'AccountTotal')
+        totals = {'@{:03d}'.format(at['@Accounts']): at['AccountTotal'] for at in acc_totals}
+        assets = self._get()
+        for a in assets:
+            a['CurrentTotal'] = eval(a['AssetFormula'].format(**totals))
+            del a['AssetFormula']
+        return assets
