@@ -6,14 +6,11 @@ CREATE FUNCTION {username}.update_accs() RETURNS trigger
 BEGIN
 	WITH t AS (SELECT "@Accounts", "OperationType" FROM {username}."CatsToAccs"
 		WHERE "@Categories"=NEW."@Categories")
-    UPDATE public."Accounts" a
+    UPDATE {username}."Accounts" a
     	SET "AccountTotal"=a."AccountTotal" + t."OperationType" * NEW."OperationTotal"
-    FROM
-    	{username}."Accounts" accs
-    INNER JOIN
-    	t
-    ON
-    	accs."@Accounts"=t."@Accounts";
+    FROM t 
+    WHERE 
+    	a."@Accounts"=t."@Accounts";
     RETURN NEW;
 END;
 $$;

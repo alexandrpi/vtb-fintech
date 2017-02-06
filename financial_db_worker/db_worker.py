@@ -45,16 +45,21 @@ class TableWorker:
         self.__schema = schema
         self.__table = table
         self.__conds = conditions
-        columns_query = 'SELECT column_name FROM information_schema.columns WHERE table_name={table}'
+        columns_query = 'SELECT DISTINCT column_name FROM information_schema.columns WHERE table_name={table}'
         columns = self.__db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
         self._columns = [c[0] for c in columns]
 
-    def _insert(self, params):
+    def _insert(self, kvals):
+        # TODO: исправить параметры на словарь именованных параметров
+        keys, vals = [], []
+        for k, v in kvals.items():
+            keys.append(k)
+            vals.append(v)
         template = 'INSERT INTO {schema}."{table}" ({names}) VALUES ({values})'
         self.__db.query(template.format(schema=self.__schema,
-                                        names=', '.join(map(helpers.quote2, self._columns[1:])),
+                                        names=', '.join(map(helpers.quote2, keys)),
                                         table=self.__table,
-                                        values=', '.join(map(str, params))))
+                                        values=', '.join(map(str, vals))))
 
     def _update(self, conditions, kvals):
         template = 'UPDATE {schema}."{table}" SET ({keys}) = ({vals}) {condition}'
@@ -92,10 +97,22 @@ class OperationsWorker(TableWorker):
                     'end_date': '"OperationDate" < \'{}\'',
                     'total_start': '"OperationTotal" > {}',
                     'total_end': '"OperationTotal" < {}'}
-        super().__init__(db_connection, 'Operations',op_conds, schema)
+        super().__init__(db_connection, 'Operations', op_conds, schema)
 
-    def add_operation(self, total, category_id, comment='', date=datetime.datetime.now()):
-        self._insert([category_id, total, helpers.quote(date), helpers.quote(comment)])
+    def add_operation(self, **kwargs):
+        kvals = {}
+        err_tmpl = 'Не указан обязательный параметр: {param} ({desc})!'
+        if kwargs.get('category_id'):
+            kvals['@Categories'] = kwargs['category_id']
+        else:
+            raise TypeError(err_tmpl.format(param='category_id', desc='идентификатор категории'))
+        if kwargs.get('total'):
+            kvals['OperationTotal'] = kwargs['total']
+        else:
+            raise TypeError(err_tmpl.format(param='total', desc='сумма операции'))
+        kvals['OperationDate'] = helpers.quote(kwargs['date'] if kwargs.get('comment') else datetime.datetime.now())
+        kvals['Commentary'] = helpers.quote(kwargs['comment'] if kwargs.get('comment') else '')
+        self._insert(kvals)
 
     def get_operations(self, cnames=False, *columns, **conds):
         return self._get(columns, conds)

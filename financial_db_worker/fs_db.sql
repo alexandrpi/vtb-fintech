@@ -41,12 +41,9 @@ BEGIN
 		WHERE "@Categories"=NEW."@Categories")
     UPDATE public."Accounts" a
     	SET "AccountTotal"=a."AccountTotal" + t."OperationType" * NEW."OperationTotal"
-    FROM
-    	public."Accounts" accs
-    INNER JOIN
-    	t
-    ON
-    	accs."@Accounts"=t."@Accounts";
+    FROM t 
+    WHERE 
+    	a."@Accounts"=t."@Accounts";
     RETURN NEW;
 END;
 $$;
