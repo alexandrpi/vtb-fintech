@@ -50,3 +50,4 @@ Temporary Items
 .idea
 /test.py
 /financial_db_worker/__pycache__
+/financial_db_worker/db_creation.log

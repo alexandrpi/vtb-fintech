@@ -1,2 +1,2 @@
-psql -U postgres -f fs_db.sql postgres
+psql -U postgres -f fs_db.sql -v accs_path='%~dp0init_data\accounts.csv' -v cats_path='%~dp0init_data\categories.csv' -v ctas_path='%~dp0init_data\catstoaccs.csv' -v asts_path='%~dp0init_data\assets.csv' -L db_creation.log postgres 
 pause
