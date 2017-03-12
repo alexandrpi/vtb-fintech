@@ -83,7 +83,7 @@ CREATE TABLE test_user."Categories" (
     "@Categories" serial NOT NULL,
     "Name" text NOT NULL,
 	"CategoryType" smallint NOT NULL,
-	"Patent" text
+	"Parent" text
 );
 
 ALTER TABLE test_user."Categories" OWNER TO postgres;
