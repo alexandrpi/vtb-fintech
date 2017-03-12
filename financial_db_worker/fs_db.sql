@@ -82,7 +82,8 @@ ALTER TABLE test_user."Assets" OWNER TO postgres;
 CREATE TABLE test_user."Categories" (
     "@Categories" serial NOT NULL,
     "Name" text NOT NULL,
-	"CategoryType" smallint NOT NULL
+	"CategoryType" smallint NOT NULL,
+	"Patent" text
 );
 
 ALTER TABLE test_user."Categories" OWNER TO postgres;
@@ -91,7 +92,7 @@ CREATE TABLE test_user."CatsToAccs" (
     "@CatsToAccs" serial NOT NULL,
     "@Categories" integer NOT NULL,
     "@Accounts" integer NOT NULL,
-    "OperationType" smallint NOT NULL
+    "OperationType" double precision NOT NULL
 );
 
 ALTER TABLE test_user."CatsToAccs" OWNER TO postgres;
