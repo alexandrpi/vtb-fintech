@@ -61,14 +61,14 @@ class TableWorker:
         for k, v in kvals.items():
             keys.append(k)
             vals.append(v)
-        template = 'INSERT INTO {schema}."{table}" ({names}) VALUES ({values})'
+        template = 'INSERT INTO "{schema}"."{table}" ({names}) VALUES ({values})'
         self._db.query(template.format(schema=self._schema,
                                        names=', '.join(map(helpers.quote2, keys)),
                                        table=self.__table,
                                        values=', '.join(map(str, vals))))
 
     def _update(self, conditions, kvals):
-        template = 'UPDATE {schema}."{table}" SET ({keys}) = ({vals}) {condition}'
+        template = 'UPDATE "{schema}"."{table}" SET ({keys}) = ({vals}) {condition}'
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
         keys, vals = [], []
         for k, v in kvals.items():
@@ -87,7 +87,7 @@ class TableWorker:
         if conds:
             conditions = [self.__conds[key].format(conds[key]) for key in conds]
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
-        template = 'SELECT {columns} FROM {schema}."{table}" {condition}'
+        template = 'SELECT {columns} FROM "{schema}"."{table}" {condition}'
         result = self._db.query(template.format(schema=self._schema,
                                                 table=self.__table,
                                                 columns='*' if not fields else ', '.join(fields),
