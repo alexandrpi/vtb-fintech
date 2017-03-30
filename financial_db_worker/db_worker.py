@@ -45,7 +45,7 @@ class FDBWorker:
 class TableWorker:
     """Базовый класс для работы с таблицами базы FinancialStatements"""
 
-    def __init__(self, db_connection, table, conditions, schema='public'):
+    def __init__(self, db_connection, table, conditions, schema='test_user'):
         self._db = db_connection
         self._schema = schema
         self.__table = table
