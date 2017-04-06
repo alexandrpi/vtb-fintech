@@ -88,13 +88,13 @@ class TableWorker:
         fields = [helpers.quote2(c) for c in columns if c in self._columns]
         conditions = []
         if conds:
-            conditions = [self.__conds[key].format(conds[key]) for key in conds]
             if conds.get('extra'):
-                join = conds.pop('join')
+                join = conds.pop('extra')
                 conditions.extend(join.get('conds', []))
                 fields.extend(join.get('columns', []))
                 group_by = join.get('group_by')
                 order_by = join.get('order_by')
+            conditions = [self.__conds[key].format(conds[key]) for key in conds]
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
         template = 'SELECT {columns} FROM "{schema}"."{table}" {alias} {join} {condition} {group_by} {order_by}'
         result = self._db.query(template.format(schema=self._schema,
@@ -139,21 +139,21 @@ class OperationsWorker(TableWorker):
 
     def get_by_cat_type(self, **conds):
         # TODO: проверить работоспособность метода вообще и на сгенерированных данных
-        if len(conds) < 3:
+        start_date, end_date, cat_type = conds.get('start_date'), conds.get('end_date'), conds.get('cat_type')
+        if not all([start_date, end_date, cat_type]):
             raise TypeError('Не указаны обязательные параметры!')
-        dt_from, dt_to, cat_type = conds.get('date_from'), conds.get('date_to'), conds.get('cat_type')
         x_query = '''
-        LEFT JOIN Categories cats
+        LEFT JOIN "{user}"."Categories" cats
         ON ops."@Categories" = cats."@Categories"
-        '''
+        '''.format(user=self._schema)
         x_conds = ['"CategoryType = {}"'.format(cat_type)]
-        x_columns = ['"CategoryName"', 'SUM("OperationTotal")']
-        x_group_by = ['"CategoryName"']
+        x_columns = ['"Name"', 'SUM("OperationTotal")']
+        x_group_by = ['"Name"']
         x = {'columns': x_columns,
              'join': x_query,
              'conds': x_conds,
              'group_by': x_group_by}
-        return self._get(start_date=dt_from, end_date=dt_to, extra=x)
+        return self._get(start_date=start_date, end_date=end_date, extra=x)
 
 
 class AccountWorker(TableWorker):
