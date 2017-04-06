@@ -16,4 +16,4 @@ FROM '{path}/init_data/assets.csv'
 
 UPDATE "{username}"."Accounts"
 SET "AccountTotal"={account_sum}
-WHERE "@Accounts"=51
+WHERE "@Accounts" IN (50, 51)

@@ -3,6 +3,8 @@ import datetime
 import os
 from . import helpers
 
+# TODO: Написать докстринги и логирование!
+
 
 class FDBWorker:
     """Класс-подключение для работы с базой данных FinancialStatements"""

@@ -152,4 +152,4 @@ FROM :asts_path
 
 UPDATE test_user."Accounts"
 SET "AccountTotal"=50000
-WHERE "@Accounts"=51
+WHERE "@Accounts" IN (50, 51)
