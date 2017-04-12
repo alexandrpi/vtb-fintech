@@ -15,7 +15,15 @@ class FDBWorker:
                                   host=host,
                                   port=port,
                                   dbname='FinancialStatements')
-        self.query = self.__connection.query
+
+    def __del__(self):
+        self.__connection.close()
+
+    def close(self):
+        self.__connection.close()
+
+    def query(self, sql_command):
+        return self.__connection.query(sql_command)
 
     def __create_schema(self, name):
         """Метод для создания схемы для нового пользователя"""
