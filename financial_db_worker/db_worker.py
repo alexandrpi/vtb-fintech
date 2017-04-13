@@ -3,6 +3,8 @@ import datetime
 import os
 from . import helpers
 
+# TODO: Написать докстринги и логирование!
+
 
 class FDBWorker:
     """Класс-подключение для работы с базой данных FinancialStatements"""
@@ -13,7 +15,15 @@ class FDBWorker:
                                   host=host,
                                   port=port,
                                   dbname='FinancialStatements')
-        self.query = self.__connection.query
+
+    def __del__(self):
+        self.__connection.close()
+
+    def close(self):
+        self.__connection.close()
+
+    def query(self, sql_command):
+        return self.__connection.query(sql_command)
 
     def __create_schema(self, name):
         """Метод для создания схемы для нового пользователя"""
@@ -82,16 +92,29 @@ class TableWorker:
     def _get(self, *columns, **conds):
         """Базовый SELECT-запрос"""
         # TODO: доработать стандартный метод _get для использования пользовательских условий (JOIN и т.п.)
+        join = None
+        order_by = None
+        group_by = None
         fields = [helpers.quote2(c) for c in columns if c in self._columns]
         conditions = []
         if conds:
+            if conds.get('extra'):
+                join = conds.pop('extra')
+                conditions.extend(join.get('conds', []))
+                fields.extend(join.get('columns', []))
+                group_by = join.get('group_by')
+                order_by = join.get('order_by')
             conditions = [self.__conds[key].format(conds[key]) for key in conds]
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
-        template = 'SELECT {columns} FROM "{schema}"."{table}" {condition}'
+        template = 'SELECT {columns} FROM "{schema}"."{table}" {alias} {join} {condition} {group_by} {order_by}'
         result = self._db.query(template.format(schema=self._schema,
                                                 table=self.__table,
                                                 columns='*' if not fields else ', '.join(fields),
-                                                condition=condition))
+                                                condition=condition,
+                                                alias='ops' if join else '',
+                                                join=join['join'] if join else '',
+                                                group_by='GROUP BY {}'.format(', '.join(group_by)) if group_by else '',
+                                                order_by='ORDER BY {}'.format(', '.join(order_by)) if order_by else ''))
         return result.dictresult()
 
 
@@ -99,6 +122,7 @@ class OperationsWorker(TableWorker):
     """Класс для работы с таблицей Operations"""
 
     def __init__(self, db_connection, schema):
+        # TODO: продумать функционал с единственной датой, или не надо?
         op_conds = {'start_date': '"OperationDate" > \'{}\'',
                     'end_date': '"OperationDate" < \'{}\'',
                     'total_start': '"OperationTotal" > {}',
@@ -120,8 +144,26 @@ class OperationsWorker(TableWorker):
         kvals['Commentary'] = helpers.quote(kwargs['comment'] if kwargs.get('comment') else '')
         self._insert(kvals)
 
-    def get_operations(self, cnames=False, *columns, **conds):
+    def get_operations(self, *columns, **conds):
         return self._get(*columns, **conds)
+
+    def get_by_cat_type(self, **conds):
+        # TODO: проверить работоспособность метода вообще и на сгенерированных данных
+        start_date, end_date, cat_type = conds.get('start_date'), conds.get('end_date'), conds.get('cat_type')
+        if not all([start_date, end_date, cat_type]):
+            raise TypeError('Не указаны обязательные параметры!')
+        x_query = '''
+        LEFT JOIN "{user}"."Categories" cats
+        ON ops."@Categories" = cats."@Categories"
+        '''.format(user=self._schema)
+        x_conds = ['"CategoryType = {}"'.format(cat_type)]
+        x_columns = ['"Name"', 'SUM("OperationTotal")']
+        x_group_by = ['"Name"']
+        x = {'columns': x_columns,
+             'join': x_query,
+             'conds': x_conds,
+             'group_by': x_group_by}
+        return self._get(start_date=start_date, end_date=end_date, extra=x)
 
 
 class AccountWorker(TableWorker):
@@ -148,7 +190,6 @@ class CategoriesWorker(TableWorker):
 
 
 class AssetsWorker(TableWorker):
-
     def __init__(self, db_connection, schema):
         assets_conds = {}
         super().__init__(db_connection, 'Assets', assets_conds, schema)
