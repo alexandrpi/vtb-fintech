@@ -14,6 +14,7 @@ sours = categories.get_categories()
 parentButtons = set([x['Parent'] for x in sours])
 childButtons = [x['Name'] for x in sours]
 type_id = None
+conn.close()
 
 
 # print(dataCategories)
@@ -23,27 +24,56 @@ type_id = None
 # print(buttons)
 # [print(x) for x in buttons if x["Parent"] == 'Расчеты за услуги и другие операции']
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    if not (conn.user_exist(str(message.chat.first_name))): conn.create_user(str(message.chat.first_name), 0)
+def first_keyboard(message):
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, row_width=1)
     markup.add('Занесение информации о финансовой операции', 'Проверить состояние счета', 'Финансовая отчетность')
-    bot.send_message(message.chat.id, 'Привет ' + message.chat.first_name, reply_markup=markup)
+    bot.send_message(message.chat.id,
+                     'Привет, ' + message.chat.first_name + '\n \n Выберите пункт менюв зависимости от того, что вы хотите получить или сделать',
+                     reply_markup=markup)
+
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    conn = fdbw.FDBWorker()
+    if not (conn.user_exist(str(message.chat.id))):
+        firstSum = bot.send_message(message.chat.id, 'Введите первоначальную сумму перед регистрацией')
+        bot.register_next_step_handler(firstSum, regist)
+    else:
+        first_keyboard(message)
+    conn.close()
+
+
+def regist(message):
+    conn = fdbw.FDBWorker()
+    conn.create_user(str(message.chat.id), int(message.text))
+    first_keyboard(message)
+
+
+def operation_send(message):
+    conn = fdbw.FDBWorker()
+    global type_id
+    ops = fdbw.OperationsWorker(conn, message.chat.id)
+    ops.add_operation(total=message.text, category_id=type_id)
+    conn.close()
 
 
 @bot.message_handler(content_types=["text"])
 def keyboard(message):
+
+    if message.text == 'Главное меню':
+        first_keyboard(message)
+
     if message.text == 'Занесение информации о финансовой операции':
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, row_width=1)
-        markup.add(*[types.KeyboardButton(text=x) for x in parentButtons])
-        bot.send_message(message.chat.id, 'sharaga ebana', reply_markup=markup)
+        markup.add(*[types.KeyboardButton(text=x) for x in parentButtons], 'Главное меню')
+        bot.send_message(message.chat.id, 'Выберите вид операции', reply_markup=markup)
         # msg = bot.reply_to(message, 'ну поехали', reply_markup=markup)
         # bot.register_next_step_handler(msg, process_step)  # TODO: погуглить это говно и это bot.set_update_listener()
 
     if message.text in parentButtons:
         markup = types.ReplyKeyboardMarkup(row_width=1)
-        markup.add(*[x['Name'] for x in sours if x['Parent'] == message.text])
-        bot.send_message(message.chat.id, 'сука', reply_markup=markup)
+        markup.add(*[x['Name'] for x in sours if x['Parent'] == message.text], 'Главное меню')
+        bot.send_message(message.chat.id, 'Выберите тип операции', reply_markup=markup)
         # bot.register_next_step_handler(info, hyi)
 
     if message.text in childButtons:
@@ -52,19 +82,15 @@ def keyboard(message):
             if x['Name'] == message.text:
                 type_id = x['@Categories']
                 break
-        infoText = bot.send_message(message.chat.id, 'Твоя жизнь не имеет смысла')
+        infoText = bot.send_message(message.chat.id, 'введите сумму')
         bot.register_next_step_handler(infoText, operation_send)
 
     if message.text == 'Проверить состояние счета':
-        balance = fdbw.AssetsWorker(conn, message.chat.first_name)
+        conn = fdbw.FDBWorker()
+        balance = fdbw.AssetsWorker(conn, message.chat.id)
         balance = balance.get_balance(ids=[5])[0]['CurrentTotal']
-        bot.send_message(message.chat.id, balance)
-
-
-def operation_send(message):
-    global type_id
-    ops = fdbw.OperationsWorker(conn, message.chat.first_name)
-    ops.add_operation(total=message.text, category_id=type_id)
+        bot.send_message(message.chat.id, "На вашем счете: " + str(balance))
+        conn.close()
 
 
 # print('asdsad')

@@ -16,8 +16,6 @@ class FDBWorker:
                                   port=port,
                                   dbname='FinancialStatements')
 
-    def __del__(self):
-        self.__connection.close()
 
     def close(self):
         self.__connection.close()
