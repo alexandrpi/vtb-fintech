@@ -37,18 +37,31 @@ class FDBWorker:
             self.query(fsdata.read().format(username=username, path=here, account_sum=account_sum))
 
     def user_exist(self, username):
-        """Проверяет, существует ли пользователь в базе, т.е. есть ли схема с данным именем"""
+        """
+        Проверяет, существует ли пользователь в базе, т.е. есть ли схема с данным именем
+        :param username: имя пользователя, использованное при создании
+        :return: True/False
+        """
         check_sql = 'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'{username}\')'.format(username=username)
         result = self.query(check_sql)
         return result.dictresult()[0]['exists']
 
     def create_user(self, username, acccount_sum):
-        """Метод для создания нового пользователя"""
+        """
+        Метод для создания нового пользователя
+        :param username: имя пользователя, использованное при создании
+        :param acccount_sum: начальная сумма на 50 и 51 счетах
+        :return: None
+        """
         self.__create_schema(username)
         self.__deploy_data(username, acccount_sum)
 
     def user_delete(self, username):
-        """Удаялет схему пользователя, используется ТОЛЬКО для отладки"""
+        """
+        Удаялет схему пользователя, используется ТОЛЬКО для отладки
+        :param username: имя пользователя, использованное при создании
+        :return: None
+        """
         self.query('DROP SCHEMA "{username}" CASCADE'.format(username=username))
 
 
@@ -91,7 +104,6 @@ class TableWorker:
 
     def _get(self, *columns, **conds):
         """Базовый SELECT-запрос"""
-        # TODO: доработать стандартный метод _get для использования пользовательских условий (JOIN и т.п.)
         join = None
         order_by = None
         group_by = None
@@ -123,13 +135,21 @@ class OperationsWorker(TableWorker):
 
     def __init__(self, db_connection, schema):
         # TODO: продумать функционал с единственной датой, или не надо?
-        op_conds = {'start_date': '"OperationDate" > \'{}\'',
+        op_conds = {'start_date': '"OperationDate" >= \'{}\'',
                     'end_date': '"OperationDate" < \'{}\'',
                     'total_start': '"OperationTotal" > {}',
                     'total_end': '"OperationTotal" < {}'}
         super().__init__(db_connection, 'Operations', op_conds, schema)
 
     def add_operation(self, **kwargs):
+        """
+        Метод для создания новой операции
+        :param category_id: идентификатор категории
+        :param total: сумма операции
+        :param date: дата-время операции
+        :param comment: комментарий
+        :return: None
+        """
         kvals = {}
         err_tmpl = 'Не указан обязательный параметр: {param} ({desc})!'
         if kwargs.get('category_id'):
@@ -148,7 +168,14 @@ class OperationsWorker(TableWorker):
         return self._get(*columns, **conds)
 
     def get_by_cat_type(self, **conds):
-        # TODO: проверить работоспособность метода вообще и на сгенерированных данных
+        """
+        Метод для получения сумм операций по типу категорий
+        :param start_date: дата-время, начиная с которой делается подсчёт сумм
+        :param end_date: дата-время, до которой делается подсчёт сумм
+        :param cat_type: тип категории (-1 — расходная, 1 — доходная)
+        :return: Список словарей вида {"Name": <имя_категории> -> str,
+                                       "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
+        """
         start_date, end_date, cat_type = conds.get('start_date'), conds.get('end_date'), conds.get('cat_type')
         if not all([start_date, end_date, cat_type]):
             raise TypeError('Не указаны обязательные параметры!')
@@ -157,7 +184,7 @@ class OperationsWorker(TableWorker):
         ON ops."@Categories" = cats."@Categories"
         '''.format(user=self._schema)
         x_conds = ['"CategoryType = {}"'.format(cat_type)]
-        x_columns = ['"Name"', 'SUM("OperationTotal")']
+        x_columns = ['"Name"', 'SUM("OperationTotal") AS "CategoryTotal"']
         x_group_by = ['"Name"']
         x = {'columns': x_columns,
              'join': x_query,
