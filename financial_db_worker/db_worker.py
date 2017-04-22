@@ -3,7 +3,7 @@ import datetime
 import os
 from . import helpers
 
-# TODO: Написать докстринги и логирование!
+# TODO: Написать подробные комментарии (и логирование?)
 
 
 class FDBWorker:
@@ -24,38 +24,62 @@ class FDBWorker:
         return self.__connection.query(sql_command)
 
     def __create_schema(self, name):
-        """Метод для создания схемы для нового пользователя"""
+        """Метод создания схемы для нового пользователя"""
         with open(os.path.join(os.path.dirname(__file__), 'fs_new_schema.sql'), 'r') as schema_sql:
             self.query(schema_sql.read().format(username=name))
 
     def __deploy_data(self, username, account_sum):
-        """Заполнение таблиц заданной схемы стандартными данными, начисление на счёт первоначальной суммы"""
+        """
+        Метод заполнения таблиц заданного пользователя стандартными данными,
+        начисление на 50 и 51 счёта первоначальной суммы
+        """
         here = os.path.dirname(__file__)
         with open(os.path.join(here, 'data_deploy.sql'), 'r') as fsdata:
             self.query(fsdata.read().format(username=username, path=here, account_sum=account_sum))
 
     def user_exist(self, username):
-        """Проверяет, существует ли пользователь в базе, т.е. есть ли схема с данным именем"""
+        """
+        Проверяет, существует ли пользователь в базе, т.е. есть ли схема с данным именем
+        :param username: имя пользователя, использованное при создании
+        :return: True/False
+        """
         check_sql = 'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'{username}\')'.format(username=username)
         result = self.query(check_sql)
         return result.dictresult()[0]['exists']
 
     def create_user(self, username, acccount_sum):
-        """Метод для создания нового пользователя"""
+        """
+        Метод для создания нового пользователя
+        :param username: имя пользователя, использованное при создании
+        :param acccount_sum: начальная сумма на 50 и 51 счетах
+        :return: None
+        """
         self.__create_schema(username)
         self.__deploy_data(username, acccount_sum)
 
     def user_delete(self, username):
-        """Удаялет схему пользователя, используется ТОЛЬКО для отладки"""
+        """
+        Удаялет схему пользователя, используется ТОЛЬКО для отладки
+        :param username: имя пользователя, использованное при создании
+        :return: None
+        """
         self.query('DROP SCHEMA "{username}" CASCADE'.format(username=username))
 
 
 class TableWorker:
     """Базовый класс для работы с таблицами базы FinancialStatements"""
 
-    def __init__(self, db_connection, table, conditions, schema='test_user'):
+    def __init__(self, db_connection, table, conditions, username='test_user'):
+        """
+        Конструктор базового класса работы с таблицами
+        :param db_connection: объект класса-подключения к БД
+        :param table: имя таблицы
+        :param conditions: словарь с условиями для построения WHERE в запросах к таблицам
+        :param username: имя пользователя, из таблиц которого будут запрашиваться данные
+        :return: объект класса TableWorker
+        """
         self._db = db_connection
-        self._schema = schema
+        self._schema = username
         self.__table = table
         self.__conds = {'ids': '{k}={v}'.format(k='"@{table}"'.format(table=self.__table),
                                                 v='ANY(ARRAY{})')}
@@ -89,7 +113,6 @@ class TableWorker:
 
     def _get(self, *columns, **conds):
         """Базовый SELECT-запрос"""
-        # TODO: доработать стандартный метод _get для использования пользовательских условий (JOIN и т.п.)
         join = None
         order_by = None
         group_by = None
@@ -120,14 +143,23 @@ class OperationsWorker(TableWorker):
     """Класс для работы с таблицей Operations"""
 
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         # TODO: продумать функционал с единственной датой, или не надо?
-        op_conds = {'start_date': '"OperationDate" > \'{}\'',
+        op_conds = {'start_date': '"OperationDate" >= \'{}\'',
                     'end_date': '"OperationDate" < \'{}\'',
                     'total_start': '"OperationTotal" > {}',
                     'total_end': '"OperationTotal" < {}'}
         super().__init__(db_connection, 'Operations', op_conds, schema)
 
     def add_operation(self, **kwargs):
+        """
+        Метод для создания новой операции
+        :param category_id: идентификатор категории
+        :param total: сумма операции
+        :param date: дата-время операции
+        :param comment: комментарий
+        :return: None
+        """
         kvals = {}
         err_tmpl = 'Не указан обязательный параметр: {param} ({desc})!'
         if kwargs.get('category_id'):
@@ -146,7 +178,14 @@ class OperationsWorker(TableWorker):
         return self._get(*columns, **conds)
 
     def get_by_cat_type(self, **conds):
-        # TODO: проверить работоспособность метода вообще и на сгенерированных данных
+        """
+        Метод для получения сумм операций по типу категорий
+        :param start_date: дата-время, начиная с которой делается подсчёт сумм
+        :param end_date: дата-время, до которой делается подсчёт сумм
+        :param cat_type: тип категории (-1 — расходная, 1 — доходная)
+        :return: список словарей вида {"Name": <имя_категории> -> str,
+                                       "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
+        """
         start_date, end_date, cat_type = conds.get('start_date'), conds.get('end_date'), conds.get('cat_type')
         if not all([start_date, end_date, cat_type]):
             raise TypeError('Не указаны обязательные параметры!')
@@ -155,7 +194,7 @@ class OperationsWorker(TableWorker):
         ON ops."@Categories" = cats."@Categories"
         '''.format(user=self._schema)
         x_conds = ['"CategoryType = {}"'.format(cat_type)]
-        x_columns = ['"Name"', 'SUM("OperationTotal")']
+        x_columns = ['"Name"', 'SUM("OperationTotal") AS "CategoryTotal"']
         x_group_by = ['"Name"']
         x = {'columns': x_columns,
              'join': x_query,
@@ -168,6 +207,7 @@ class AccountWorker(TableWorker):
     """Класс для работы с таблицей Accounts"""
 
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         acc_conds = {'acc_id': '"@Accounts = {}"'}
         super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
@@ -180,6 +220,7 @@ class CategoriesWorker(TableWorker):
     """Класс для работы с таблицей Categories"""
 
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         cat_conds = {'cat_id': '"@Categories = {}"'}
         super().__init__(db_connection, 'Categories', cat_conds, schema)
 
@@ -188,11 +229,22 @@ class CategoriesWorker(TableWorker):
 
 
 class AssetsWorker(TableWorker):
+    """Класс для работы с балансовой таблицей Assets"""
+
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         assets_conds = {}
         super().__init__(db_connection, 'Assets', assets_conds, schema)
 
     def get_balance(self, ids=None):
+        """
+        Метод для получения таблицы баланса
+        :param ids: ВРЕМЕННЫЙ параметр — указывает идентификаторы строк баланса, которые требуется вернуть
+        :return: список словарей вида {"@Assets": <идентификатор_строки_баланса> -> int,
+                                       "Name": <наименование_строки_баланса> -> str,
+                                       "Type": <тип_строки_баланса> -> int, # 1 — актив, 0 — пассив
+                                       "CurrentTotal": <сумма_по_строке_баланса> -> float}
+        """
         acc_totals = AccountWorker(self._db, self._schema).get_accounts('@Accounts', 'AccountTotal')
         totals = {'@{:03d}'.format(at['@Accounts']): at['AccountTotal'] for at in acc_totals}
         assets = self._get(**({'ids': ids} if ids else {}))
