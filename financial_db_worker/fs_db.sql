@@ -82,8 +82,8 @@ ALTER TABLE test_user."Assets" OWNER TO postgres;
 CREATE TABLE test_user."Categories" (
     "@Categories" serial NOT NULL,
     "Name" text NOT NULL,
-	"CategoryType" smallint NOT NULL,
-	"Parent" text
+	  "CategoryType" smallint NOT NULL,
+	  "Parent" text
 );
 
 ALTER TABLE test_user."Categories" OWNER TO postgres;
@@ -136,19 +136,19 @@ ALTER TABLE ONLY test_user."Operations"
 --НАПОЛНЕНИЕ БАЗЫ
 COPY test_user."Accounts"
 FROM :accs_path
-(FORMAT 'csv', DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
+(FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
 COPY test_user."Categories"
 FROM :cats_path
-(FORMAT 'csv', DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
+(FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
 COPY test_user."CatsToAccs" ("@Categories", "@Accounts", "OperationType")
 FROM :ctas_path
-(FORMAT 'csv', DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
+(FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
 COPY test_user."Assets" ("Name", "Type", "AssetFormula")
 FROM :asts_path
-(FORMAT 'csv', DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
+(FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
 UPDATE test_user."Accounts"
 SET "AccountTotal"=50000

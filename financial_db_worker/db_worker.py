@@ -3,7 +3,7 @@ import datetime
 import os
 from . import helpers
 
-# TODO: Написать докстринги и логирование!
+# TODO: Написать подробные комментарии (и логирование?)
 
 
 class FDBWorker:
@@ -26,12 +26,15 @@ class FDBWorker:
         return self.__connection.query(sql_command)
 
     def __create_schema(self, name):
-        """Метод для создания схемы для нового пользователя"""
+        """Метод создания схемы для нового пользователя"""
         with open(os.path.join(os.path.dirname(__file__), 'fs_new_schema.sql'), 'r') as schema_sql:
             self.query(schema_sql.read().format(username=name))
 
     def __deploy_data(self, username, account_sum):
-        """Заполнение таблиц заданной схемы стандартными данными, начисление на счёт первоначальной суммы"""
+        """
+        Метод заполнения таблиц заданного пользователя стандартными данными,
+        начисление на 50 и 51 счёта первоначальной суммы
+        """
         here = os.path.dirname(__file__)
         with open(os.path.join(here, 'data_deploy.sql'), 'r') as fsdata:
             self.query(fsdata.read().format(username=username, path=here, account_sum=account_sum))
@@ -68,9 +71,17 @@ class FDBWorker:
 class TableWorker:
     """Базовый класс для работы с таблицами базы FinancialStatements"""
 
-    def __init__(self, db_connection, table, conditions, schema='test_user'):
+    def __init__(self, db_connection, table, conditions, username='test_user'):
+        """
+        Конструктор базового класса работы с таблицами
+        :param db_connection: объект класса-подключения к БД
+        :param table: имя таблицы
+        :param conditions: словарь с условиями для построения WHERE в запросах к таблицам
+        :param username: имя пользователя, из таблиц которого будут запрашиваться данные
+        :return: объект класса TableWorker
+        """
         self._db = db_connection
-        self._schema = schema
+        self._schema = username
         self.__table = table
         self.__conds = {'ids': '{k}={v}'.format(k='"@{table}"'.format(table=self.__table),
                                                 v='ANY(ARRAY{})')}
@@ -134,6 +145,7 @@ class OperationsWorker(TableWorker):
     """Класс для работы с таблицей Operations"""
 
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         # TODO: продумать функционал с единственной датой, или не надо?
         op_conds = {'start_date': '"OperationDate" >= \'{}\'',
                     'end_date': '"OperationDate" < \'{}\'',
@@ -173,7 +185,7 @@ class OperationsWorker(TableWorker):
         :param start_date: дата-время, начиная с которой делается подсчёт сумм
         :param end_date: дата-время, до которой делается подсчёт сумм
         :param cat_type: тип категории (-1 — расходная, 1 — доходная)
-        :return: Список словарей вида {"Name": <имя_категории> -> str,
+        :return: список словарей вида {"Name": <имя_категории> -> str,
                                        "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
         """
         start_date, end_date, cat_type = conds.get('start_date'), conds.get('end_date'), conds.get('cat_type')
@@ -197,6 +209,7 @@ class AccountWorker(TableWorker):
     """Класс для работы с таблицей Accounts"""
 
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         acc_conds = {'acc_id': '"@Accounts = {}"'}
         super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
@@ -209,6 +222,7 @@ class CategoriesWorker(TableWorker):
     """Класс для работы с таблицей Categories"""
 
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         cat_conds = {'cat_id': '"@Categories = {}"'}
         super().__init__(db_connection, 'Categories', cat_conds, schema)
 
@@ -217,11 +231,22 @@ class CategoriesWorker(TableWorker):
 
 
 class AssetsWorker(TableWorker):
+    """Класс для работы с балансовой таблицей Assets"""
+
     def __init__(self, db_connection, schema):
+        """Смотри описание конструктора класса TableWorker"""
         assets_conds = {}
         super().__init__(db_connection, 'Assets', assets_conds, schema)
 
     def get_balance(self, ids=None):
+        """
+        Метод для получения таблицы баланса
+        :param ids: ВРЕМЕННЫЙ параметр — указывает идентификаторы строк баланса, которые требуется вернуть
+        :return: список словарей вида {"@Assets": <идентификатор_строки_баланса> -> int,
+                                       "Name": <наименование_строки_баланса> -> str,
+                                       "Type": <тип_строки_баланса> -> int, # 1 — актив, 0 — пассив
+                                       "CurrentTotal": <сумма_по_строке_баланса> -> float}
+        """
         acc_totals = AccountWorker(self._db, self._schema).get_accounts('@Accounts', 'AccountTotal')
         totals = {'@{:03d}'.format(at['@Accounts']): at['AccountTotal'] for at in acc_totals}
         assets = self._get(**({'ids': ids} if ids else {}))
