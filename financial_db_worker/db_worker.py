@@ -3,6 +3,7 @@ import datetime
 import os
 from . import helpers
 
+
 # TODO: Написать подробные комментарии (и логирование?)
 
 
@@ -15,7 +16,6 @@ class FDBWorker:
                                   host=host,
                                   port=port,
                                   dbname='FinancialStatements')
-
 
     def close(self):
         self.__connection.close()
@@ -146,7 +146,8 @@ class OperationsWorker(TableWorker):
         """Смотри описание конструктора класса TableWorker"""
         # TODO: продумать функционал с единственной датой, или не надо?
         op_conds = {'start_date': '"OperationDate" >= \'{}\'',
-                    'end_date': '"OperationDate" < \'{}\'',
+                    'end_date': '"OperationDate" <= \'{}\'',
+                    'date': '"OperationDate" = \'{}\'',
                     'total_start': '"OperationTotal" > {}',
                     'total_end': '"OperationTotal" < {}'}
         super().__init__(db_connection, 'Operations', op_conds, schema)
@@ -186,9 +187,16 @@ class OperationsWorker(TableWorker):
         :return: список словарей вида {"Name": <имя_категории> -> str,
                                        "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
         """
-        start_date, end_date, cat_type = conds.get('start_date'), conds.get('end_date'), conds.get('cat_type')
-        if not all([start_date, end_date, cat_type]):
+        start_date = conds.get('start_date')
+        end_date = conds.get('end_date')
+        single_date = conds.get('date')
+        cat_type = conds.get('cat_type')
+        if not all([(start_date and end_date) or single_date, cat_type]):
             raise TypeError('Не указаны обязательные параметры!')
+        if all([start_date, end_date, single_date]):
+            raise TypeError('Указано слишком много параметров!'
+                            'Требуется пара start_date/end_date или только параметр date.')
+
         x_query = '''
         LEFT JOIN "{user}"."Categories" cats
         ON ops."@Categories" = cats."@Categories"
@@ -200,7 +208,9 @@ class OperationsWorker(TableWorker):
              'join': x_query,
              'conds': x_conds,
              'group_by': x_group_by}
-        return self._get(start_date=start_date, end_date=end_date, extra=x)
+        conds['extra'] = x
+        conds.pop('cat_type')
+        return self._get(**conds)
 
 
 class AccountWorker(TableWorker):
