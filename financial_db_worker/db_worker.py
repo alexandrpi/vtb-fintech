@@ -117,25 +117,26 @@ class TableWorker:
         order_by = None
         group_by = None
         fields = [helpers.quote2(c) for c in columns if c in self._columns]
-        conditions = []
         if conds:
             if conds.get('extra'):
                 join = conds.pop('extra')
-                conditions.extend(join.get('conds', []))
-                fields.extend(join.get('columns', []))
+                fields.extend(join.get('x-columns', []))
                 group_by = join.get('group_by')
                 order_by = join.get('order_by')
-            conditions = [self.__conds[key].format(conds[key]) for key in conds]
+        conditions = [self.__conds[key].format(conds[key]) for key in conds]
+        if join:
+            conditions.extend(join.get('x-conditions', []))
         condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
         template = 'SELECT {columns} FROM "{schema}"."{table}" {alias} {join} {condition} {group_by} {order_by}'
-        result = self._db.query(template.format(schema=self._schema,
-                                                table=self.__table,
-                                                columns='*' if not fields else ', '.join(fields),
-                                                condition=condition,
-                                                alias='ops' if join else '',
-                                                join=join['join'] if join else '',
-                                                group_by='GROUP BY {}'.format(', '.join(group_by)) if group_by else '',
-                                                order_by='ORDER BY {}'.format(', '.join(order_by)) if order_by else ''))
+        select_query = template.format(schema=self._schema,
+                                       table=self.__table,
+                                       columns='*' if not fields else ', '.join(fields),
+                                       condition=condition,
+                                       alias='ops' if join else '',
+                                       join=join['join'] if join else '',
+                                       group_by='GROUP BY {}'.format(', '.join(group_by)) if group_by else '',
+                                       order_by='ORDER BY {}'.format(', '.join(order_by)) if order_by else '')
+        result = self._db.query(select_query)
         return result.dictresult()
 
 
@@ -181,32 +182,37 @@ class OperationsWorker(TableWorker):
     def get_by_cat_type(self, **conds):
         """
         Метод для получения сумм операций по типу категорий
-        :param start_date: дата-время, начиная с которой делается подсчёт сумм
-        :param end_date: дата-время, до которой делается подсчёт сумм
+        :param start_date: дата, начиная с которой делается подсчёт сумм, в формате строки 'yyyy-mm-dd'
+        :param end_date: дата, до которой делается подсчёт сумм, в формате строки 'yyyy-mm-dd'
+        :param date: дата, за которую делается подсчёт сумм, в формате строки 'yyyy-mm-dd'
         :param cat_type: тип категории (-1 — расходная, 1 — доходная)
         :return: список словарей вида {"Name": <имя_категории> -> str,
                                        "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
+        ПРИМЕЧАНИЕ: требуется указать либо пару параметров start_date и end_date или же один параметр date
         """
+        required_param_error = 'Не указан один из обязательных параметров: {param} (desc)!'
         start_date = conds.get('start_date')
         end_date = conds.get('end_date')
         single_date = conds.get('date')
         cat_type = conds.get('cat_type')
-        if not all([(start_date and end_date) or single_date, cat_type]):
-            raise TypeError('Не указаны обязательные параметры!')
+        if cat_type is None:
+            raise TypeError(required_param_error.format(param='cat_type', desc='тип категории'))
         if all([start_date, end_date, single_date]):
             raise TypeError('Указано слишком много параметров!'
                             'Требуется пара start_date/end_date или только параметр date.')
-
+        if not ((start_date and end_date) or single_date):
+            raise TypeError(required_param_error.format(param='или'.join(['start_date', 'end_date', 'date']),
+                                                        desc='временной промежуток подсчёта сумм'))
         x_query = '''
         LEFT JOIN "{user}"."Categories" cats
         ON ops."@Categories" = cats."@Categories"
         '''.format(user=self._schema)
-        x_conds = ['"CategoryType = {}"'.format(cat_type)]
+        x_conds = ['"CategoryType" = {}'.format(cat_type)]
         x_columns = ['"Name"', 'SUM("OperationTotal") AS "CategoryTotal"']
         x_group_by = ['"Name"']
-        x = {'columns': x_columns,
+        x = {'x-columns': x_columns,
              'join': x_query,
-             'conds': x_conds,
+             'x-conditions': x_conds,
              'group_by': x_group_by}
         conds['extra'] = x
         conds.pop('cat_type')
