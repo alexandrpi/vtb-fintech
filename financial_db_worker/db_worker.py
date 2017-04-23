@@ -190,7 +190,7 @@ class OperationsWorker(TableWorker):
                                        "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
         ПРИМЕЧАНИЕ: требуется указать либо пару параметров start_date и end_date или же один параметр date
         """
-        required_param_error = 'Не указан один из обязательных параметров: {param} (desc)!'
+        required_param_error = 'Не указан один из обязательных параметров: {param} ({desc})!'
         start_date = conds.get('start_date')
         end_date = conds.get('end_date')
         single_date = conds.get('date')
@@ -201,7 +201,7 @@ class OperationsWorker(TableWorker):
             raise TypeError('Указано слишком много параметров!'
                             'Требуется пара start_date/end_date или только параметр date.')
         if not ((start_date and end_date) or single_date):
-            raise TypeError(required_param_error.format(param='или'.join(['start_date', 'end_date', 'date']),
+            raise TypeError(required_param_error.format(param=' или '.join(['start_date', 'end_date', 'date']),
                                                         desc='временной промежуток подсчёта сумм'))
         x_query = '''
         LEFT JOIN "{user}"."Categories" cats
