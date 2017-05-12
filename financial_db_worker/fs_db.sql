@@ -45,13 +45,13 @@ CREATE FUNCTION test_user.update_accs() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-	WITH t AS (SELECT "@Accounts", "OperationType" FROM test_user."CatsToAccs"
+	WITH t AS (SELECT "AccountID", "OperationType" FROM test_user."CatsToAccs"
 		WHERE "@Categories"=NEW."@Categories")
     UPDATE test_user."Accounts" a
     	SET "AccountTotal"=a."AccountTotal" + t."OperationType" * NEW."OperationTotal"
     FROM t 
     WHERE 
-    	a."@Accounts"=t."@Accounts";
+    	a."AccountID"=t."AccountID";
     RETURN NEW;
 END;
 $$;
@@ -64,6 +64,7 @@ SET default_with_oids = false;
 
 CREATE TABLE test_user."Accounts" (
     "@Accounts" serial NOT NULL,
+    "AccountID" text,
     "Name" text NOT NULL,
     "AccountTotal" double precision NOT NULL
 );
@@ -91,7 +92,7 @@ ALTER TABLE test_user."Categories" OWNER TO postgres;
 CREATE TABLE test_user."CatsToAccs" (
     "@CatsToAccs" serial NOT NULL,
     "@Categories" integer NOT NULL,
-    "@Accounts" integer NOT NULL,
+    "AccountID" integer NOT NULL,
     "OperationType" double precision NOT NULL
 );
 
@@ -125,7 +126,7 @@ ALTER TABLE ONLY test_user."Operations"
 CREATE TRIGGER "Operations_tr" AFTER INSERT ON test_user."Operations" FOR EACH ROW EXECUTE PROCEDURE test_user.update_accs();
 
 ALTER TABLE ONLY test_user."CatsToAccs"
-    ADD CONSTRAINT "Accounts_fk" FOREIGN KEY ("@Accounts") REFERENCES test_user."Accounts"("@Accounts") ON UPDATE RESTRICT ON DELETE RESTRICT;
+    ADD CONSTRAINT "Accounts_fk" FOREIGN KEY ("AccountID") REFERENCES test_user."Accounts"("@Accounts") ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 ALTER TABLE ONLY test_user."CatsToAccs"
     ADD CONSTRAINT "Categories_fk" FOREIGN KEY ("@Categories") REFERENCES test_user."Categories"("@Categories");
@@ -134,7 +135,7 @@ ALTER TABLE ONLY test_user."Operations"
     ADD CONSTRAINT "Categories_fk" FOREIGN KEY ("@Categories") REFERENCES test_user."Categories"("@Categories") ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 --НАПОЛНЕНИЕ БАЗЫ
-COPY test_user."Accounts"
+COPY test_user."Accounts" ("AccountID", "Name", "AccountTotal")
 FROM :accs_path
 (FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
@@ -142,7 +143,7 @@ COPY test_user."Categories"
 FROM :cats_path
 (FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
-COPY test_user."CatsToAccs" ("@Categories", "@Accounts", "OperationType")
+COPY test_user."CatsToAccs" ("@Categories", "AccountID", "OperationType")
 FROM :ctas_path
 (FORMAT CSV, DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
@@ -152,4 +153,4 @@ FROM :asts_path
 
 UPDATE test_user."Accounts"
 SET "AccountTotal"=50000
-WHERE "@Accounts" IN (50, 51)
+WHERE "AccountID" IN ('50', '51')
