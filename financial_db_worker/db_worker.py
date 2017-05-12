@@ -224,7 +224,7 @@ class AccountWorker(TableWorker):
 
     def __init__(self, db_connection, schema):
         """Смотри описание конструктора класса TableWorker"""
-        acc_conds = {'acc_id': '"@Accounts = {}"'}
+        acc_conds = {'acc_id': '"AccountID = {}"'}
         super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
     def get_accounts(self, *columns, **conds):
@@ -252,18 +252,17 @@ class AssetsWorker(TableWorker):
         assets_conds = {}
         super().__init__(db_connection, 'Assets', assets_conds, schema)
 
-    def get_balance(self, ids=None):
+    def get_balance(self):
         """
         Метод для получения таблицы баланса
-        :param ids: ВРЕМЕННЫЙ параметр — указывает идентификаторы строк баланса, которые требуется вернуть
         :return: список словарей вида {"@Assets": <идентификатор_строки_баланса> -> int,
                                        "Name": <наименование_строки_баланса> -> str,
                                        "Type": <тип_строки_баланса> -> int, # 1 — актив, 0 — пассив
                                        "CurrentTotal": <сумма_по_строке_баланса> -> float}
         """
-        acc_totals = AccountWorker(self._db, self._schema).get_accounts('@Accounts', 'AccountTotal')
-        totals = {'@{:03d}'.format(at['@Accounts']): at['AccountTotal'] for at in acc_totals}
-        assets = self._get(**({'ids': ids} if ids else {}))
+        acc_totals = AccountWorker(self._db, self._schema).get_accounts('AccountID', 'AccountTotal')
+        totals = {'@{}'.format(at['AccountID']): at['AccountTotal'] for at in acc_totals}
+        assets = self._get()
         for a in assets:
             a['CurrentTotal'] = eval(a.pop('AssetFormula').format(**totals))
         return assets
