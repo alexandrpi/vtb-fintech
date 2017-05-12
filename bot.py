@@ -49,7 +49,7 @@ def operation_send(message):
         global type_id
         ops = fdbw.OperationsWorker(conn, message.chat.id)
         ops.add_operation(total=message.text, category_id=type_id)
-        bot.send_message(message.chat.id,'Выполненно')
+        bot.send_message(message.chat.id,'Выполнено')
         conn.close()
     except:
         bot.send_message(message.chat.id, 'Некорректный ввод суммы, попробуйтей снова')
