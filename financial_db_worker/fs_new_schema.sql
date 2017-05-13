@@ -23,8 +23,9 @@ SET default_with_oids = false;
 
 CREATE TABLE "{username}"."Accounts" (
     "@Accounts" serial NOT NULL,
+    "AccountID" varchar(4),
     "Name" text NOT NULL,
-    "AccountTotal" double precision NOT NULL
+    "AccountTotal" double precision DEFAULT 0
 );
 
 ALTER TABLE "{username}"."Accounts" OWNER TO postgres;
@@ -41,8 +42,8 @@ ALTER TABLE "{username}"."Assets" OWNER TO postgres;
 CREATE TABLE "{username}"."Categories" (
     "@Categories" serial NOT NULL,
     "Name" text NOT NULL,
-	"CategoryType" smallint NOT NULL,
-	"Parent" text
+	  "CategoryType" smallint NOT NULL,
+	  "Parent" text
 );
 
 ALTER TABLE "{username}"."Categories" OWNER TO postgres;
