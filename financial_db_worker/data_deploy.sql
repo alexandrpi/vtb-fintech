@@ -14,6 +14,7 @@ COPY "{username}"."Assets" ("Name", "Type", "AssetFormula")
 FROM '{path}/init_data/assets.csv'
 (FORMAT 'csv', DELIMITER ';', HEADER TRUE, ENCODING 'utf8');
 
+--13 и 37 — первичные ключи счетов 51 и 76П
 UPDATE "{username}"."Accounts"
 SET "AccountTotal"={account_sum}
-WHERE "AccountID" IN ('51', '76П')
+WHERE "@Accounts" IN (13, 37);
