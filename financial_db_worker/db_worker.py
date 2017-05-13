@@ -148,7 +148,7 @@ class OperationsWorker(TableWorker):
         # TODO: продумать функционал с единственной датой, или не надо?
         op_conds = {'start_date': '"OperationDate" >= \'{}\'',
                     'end_date': '"OperationDate" <= \'{}\'',
-                    'date': '"OperationDate" = \'{}\'',
+                    'date': '"OperationDate"::date = \'{}\'',
                     'total_start': '"OperationTotal" > {}',
                     'total_end': '"OperationTotal" < {}'}
         super().__init__(db_connection, 'Operations', op_conds, schema)
