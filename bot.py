@@ -43,8 +43,9 @@ def regist(message):
         conn.create_user(str(message.chat.id), float(message.text))
         first_keyboard(message)
     except:
-        regist_message = bot.send_message(message.chat.id,'Некорректный ввод суммы, попробуйтей снова')
-        bot.register_next_step_handler(regist_message,regist)
+        regist_message = bot.send_message(message.chat.id, 'Некорректный ввод суммы, попробуйтей снова')
+        bot.register_next_step_handler(regist_message, regist)
+
 
 def operation_send(message):
     bot.send_message(message.chat.id, 'Операция выполняется')
@@ -95,8 +96,8 @@ def financial_analysis(message):
             bot.send_message(message.chat.id, text)
         conn.close()
     except:
-        text_message = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйтей снова')
-        bot.register_next_step_handler(text_message, financial_analysis)
+        text_sad = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйтей снова')
+        bot.register_next_step_handler(text_sad, financial_analysis)
 
 
 @bot.message_handler(commands=['start'])
@@ -156,19 +157,28 @@ def keyboard(message):
         cat_id = statisticButtons[message.text]
         infoText = bot.send_message(message.chat.id, 'Введите 2 даты через запятую, в формате гггг-мм-дд')
         bot.register_next_step_handler(infoText, financial_analysis)
-        print(cat_id)
 
     if message.text == 'Отчет о финансовых результатах':
         conn = fdbw.FDBWorker()
         statistic = fdbw.AssetsWorker(conn, message.chat.id)
-        # print(statistic.get_balance())
-        for x in statistic:
-            
+        activ = ''
+        passiv = ''
+        activ_sum = 0
+        passiv_sum = 0
+        for x in statistic.get_balance():
+            if x['Type'] == 1:
+                activ += x['Name'] + ': ' + str(x['CurrentTotal']) + '\n'
+                activ_sum += x['CurrentTotal']
+            else:
+                passiv += x['Name'] + ': ' + str(x['CurrentTotal']) + '\n'
+                passiv_sum += x['CurrentTotal']
         # statistic = [x['Name'] + ': ' + str(x['CurrentTotal']) + '\n' for x in statistic.get_balance()]
-        text = ''
-        for x in statistic:
-            text += x
-        bot.send_message(message.chat.id, text)
+        # text = ''
+        # for x in statistic:
+        #     text += x
+        bot.send_message(message.chat.id,"АКТИВ\n___________________\n" + activ + "___________________\nИтог: " + str(
+            activ_sum) + "\n\n" +"ПАССИВ\n___________________\n" + passiv + "___________________\nИтог: " + str(
+            passiv_sum) + "\n")
         conn.close()
 
         # print('asdsad')
