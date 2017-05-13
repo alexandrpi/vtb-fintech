@@ -31,7 +31,7 @@ class FDBWorker:
     def __deploy_data(self, username, account_sum):
         """
         Метод заполнения таблиц заданного пользователя стандартными данными,
-        начисление на 50 и 51 счёта первоначальной суммы
+        начисление на 51 и 76П счёта первоначальной суммы
         """
         here = os.path.dirname(__file__)
         with open(os.path.join(here, 'data_deploy.sql'), 'r') as fsdata:
@@ -224,7 +224,7 @@ class AccountWorker(TableWorker):
 
     def __init__(self, db_connection, schema):
         """Смотри описание конструктора класса TableWorker"""
-        acc_conds = {'acc_id': '"AccountID = {}"'}
+        acc_conds = {'acc_id': '"AccountID" = \'{}\''}
         super().__init__(db_connection, 'Accounts', acc_conds, schema)
 
     def get_accounts(self, *columns, **conds):
