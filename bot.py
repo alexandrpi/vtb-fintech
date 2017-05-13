@@ -33,17 +33,21 @@ def first_keyboard(message):
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, row_width=1)
     markup.add('Занесение информации о финансовой операции', 'Проверить состояние счета', 'Финансовая отчетность')
     bot.send_message(message.chat.id,
-                     'Привет, ' + message.chat.first_name + '\n \nВыберите пункт менюв зависимости от того, что вы хотите получить или сделать',
+                     'Привет, ' + message.chat.first_name + '\n \nВыберите пункт меню в зависимости от того, что вы хотите получить или сделать',
                      reply_markup=markup)
 
 
 def regist(message):
-    conn = fdbw.FDBWorker()
-    conn.create_user(str(message.chat.id), int(message.text))
-    first_keyboard(message)
-
+    try:
+        conn = fdbw.FDBWorker()
+        conn.create_user(str(message.chat.id), float(message.text))
+        first_keyboard(message)
+    except:
+        regist_message = bot.send_message(message.chat.id,'Некорректный ввод суммы, попробуйтей снова')
+        bot.register_next_step_handler(regist_message,regist)
 
 def operation_send(message):
+    bot.send_message(message.chat.id, 'Операция выполняется')
     try:
         conn = fdbw.FDBWorker()
         global type_id
@@ -85,10 +89,14 @@ def financial_analysis(message):
         for x in analysisText:
             text += x
         # bot.send_message(message.chat.id, title[0].upper() + '\n' + text)
-        bot.send_message(message.chat.id, text)
+        if len(text) == 0:
+            bot.send_message(message.chat.id, 'В это время операции не было')
+        else:
+            bot.send_message(message.chat.id, text)
         conn.close()
     except:
-        bot.send_message(message.chat.id, 'Некорректный ввод, попробуйтей снова')
+        text_message = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйтей снова')
+        bot.register_next_step_handler(text_message, financial_analysis)
 
 
 @bot.message_handler(commands=['start'])
@@ -141,19 +149,22 @@ def keyboard(message):
         markup.add(*[types.KeyboardButton(text=x) for x in statisticButtons], 'Отчет о финансовых результатах',
                    'Главное меню')
         # markup.add(*[x for x in statisticButtons], 'отчет о финансовых результатах') можно писать и так. никакой разницы
-        bot.send_message(message.chat.id, 'Выберите тип операций', reply_markup=markup)
+        bot.send_message(message.chat.id, 'Выберите действие', reply_markup=markup)
 
     if message.text in statisticButtons.keys():
         global cat_id
         cat_id = statisticButtons[message.text]
         infoText = bot.send_message(message.chat.id, 'Введите 2 даты через запятую, в формате гггг-мм-дд')
         bot.register_next_step_handler(infoText, financial_analysis)
+        print(cat_id)
 
     if message.text == 'Отчет о финансовых результатах':
         conn = fdbw.FDBWorker()
         statistic = fdbw.AssetsWorker(conn, message.chat.id)
         # print(statistic.get_balance())
-        statistic = [x['Name'] + ': ' + str(x['CurrentTotal']) + '\n' for x in statistic.get_balance()]
+        for x in statistic:
+            
+        # statistic = [x['Name'] + ': ' + str(x['CurrentTotal']) + '\n' for x in statistic.get_balance()]
         text = ''
         for x in statistic:
             text += x
