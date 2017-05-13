@@ -16,7 +16,7 @@ childButtons = [x['Name'] for x in sours]
 type_id = None
 cat_id = None
 conn.close()
-statisticButtons = {'расходы': -1, 'доходы': 1}
+statisticButtons = {'Расходы': -1, 'Доходы': 1}
 
 
 # print(statisticButtons.keys())
@@ -49,10 +49,11 @@ def operation_send(message):
         global type_id
         ops = fdbw.OperationsWorker(conn, message.chat.id)
         ops.add_operation(total=message.text, category_id=type_id)
-        bot.send_message(message.chat.id,'Выполнено')
+        bot.send_message(message.chat.id, 'Выполнено')
         conn.close()
     except:
         bot.send_message(message.chat.id, 'Некорректный ввод суммы, попробуйтей снова')
+
 
 # z = [{'Name': 'Выплата по кредиту', 'CategoryTotal': 500.0}, {'Name': 'Получен кредит', 'CategoryTotal': 10000.0}]
 # x = [x['Name'] + ": " + str(x['CategoryTotal']) + '\n' for x in z]
@@ -88,6 +89,7 @@ def financial_analysis(message):
         conn.close()
     except:
         bot.send_message(message.chat.id, 'Некорректный ввод, попробуйтей снова')
+
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -129,14 +131,14 @@ def keyboard(message):
 
     if message.text == 'Проверить состояние счета':
         conn = fdbw.FDBWorker()
-        balance = fdbw.AssetsWorker(conn, message.chat.id)
-        balance = balance.get_balance(ids=[5])[0]['CurrentTotal']
-        bot.send_message(message.chat.id, "На вашем счете: " + str(balance))
+        accounts = fdbw.AccountWorker(conn, message.chat.id)
+        current_funds = accounts.get_accounts(acc_id='51')[0]['AccountTotal']
+        bot.send_message(message.chat.id, "На вашем счете: " + str(current_funds))
         conn.close()
 
     if message.text == 'Финансовая отчетность':
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, row_width=1)
-        markup.add(*[types.KeyboardButton(text=x) for x in statisticButtons], 'отчет о финансовых результатах',
+        markup.add(*[types.KeyboardButton(text=x) for x in statisticButtons], 'Отчет о финансовых результатах',
                    'Главное меню')
         # markup.add(*[x for x in statisticButtons], 'отчет о финансовых результатах') можно писать и так. никакой разницы
         bot.send_message(message.chat.id, 'Выберите тип операций', reply_markup=markup)
@@ -147,7 +149,7 @@ def keyboard(message):
         infoText = bot.send_message(message.chat.id, 'Введите 2 даты через запятую, в формате гггг-мм-дд')
         bot.register_next_step_handler(infoText, financial_analysis)
 
-    if message.text == 'отчет о финансовых результатах':
+    if message.text == 'Отчет о финансовых результатах':
         conn = fdbw.FDBWorker()
         statistic = fdbw.AssetsWorker(conn, message.chat.id)
         # print(statistic.get_balance())
