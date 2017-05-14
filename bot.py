@@ -135,7 +135,7 @@ def keyboard(message):
             if x['Name'] == message.text:
                 type_id = x['@Categories']
                 break
-        infoText = bot.send_message(message.chat.id, 'введите сумму')
+        infoText = bot.send_message(message.chat.id, 'Введите сумму операции')
         bot.register_next_step_handler(infoText, operation_send)
 
     if message.text == 'Проверить состояние счета':
