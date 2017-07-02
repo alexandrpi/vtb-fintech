@@ -1,41 +1,30 @@
-import pg
 import datetime
 import os
-from . import helpers
+import pg
+from helpers import load_config, prepared, quote2
 
 
-# TODO: Написать подробные комментарии (и логирование?)
+# TODO: Написать подробные комментарии и логирование
 
+# загрузим параметры подключения к БД
+CONFIG_PARAMS = load_config()
+REQUIRED_PARAM_ERROR = 'Не указаны обязательные параметры!'
 
-class FDBWorker:
-    """Класс-подключение для работы с базой данных FinancialStatements"""
+class UsersConnection:
+    """Класс-подключение для работы с базой данных VTBUsers"""
 
     def __init__(self, host='localhost', port=5432, username='postgres', password='postgres'):
         self.__connection = pg.DB(user=username,
                                   passwd=password,
                                   host=host,
                                   port=port,
-                                  dbname='FinancialStatements')
+                                  dbname='VTBUsers')
 
     def close(self):
         self.__connection.close()
 
     def query(self, sql_command):
         return self.__connection.query(sql_command)
-
-    def __create_schema(self, name):
-        """Метод создания схемы для нового пользователя"""
-        with open(os.path.join(os.path.dirname(__file__), 'fs_new_schema.sql'), 'r') as schema_sql:
-            self.query(schema_sql.read().format(username=name))
-
-    def __deploy_data(self, username, account_sum):
-        """
-        Метод заполнения таблиц заданного пользователя стандартными данными,
-        начисление на 51 и 76П счёта первоначальной суммы
-        """
-        here = os.path.dirname(__file__)
-        with open(os.path.join(here, 'data_deploy.sql'), 'r') as fsdata:
-            self.query(fsdata.read().format(username=username, path=here, account_sum=account_sum))
 
     def user_exist(self, username):
         """
@@ -47,23 +36,38 @@ class FDBWorker:
         result = self.query(check_sql)
         return result.dictresult()[0]['exists']
 
-    def create_user(self, username, acccount_sum):
+
+class Users:
+
+    @staticmethod
+    def new(user_data: dict):
         """
         Метод для создания нового пользователя
-        :param username: имя пользователя, использованное при создании
-        :param acccount_sum: начальная сумма на 50 и 51 счетах
+        :param user_data: dict
+        Ключи словаря — имена столбцов таблицы.
+        Поля TelegramID, PhoneNumber, VTBClient — обязательны.
         :return: None
         """
-        self.__create_schema(username)
-        self.__deploy_data(username, acccount_sum)
+        cols = user_data.keys()
+        required = 'TelegramID', 'PhoneNumber', 'VTBClient'
+        if any(param not in cols for param in required):
+            raise TypeError(REQUIRED_PARAM_ERROR)
+        query_tmpl = 'INSERT INTO "Organizations" ({columns}) VALUES ({values})'
+        ins_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
+                                      values=', '.join(prepared(len(cols))))
+        with pg.DB(**CONFIG_PARAMS) as conn:
+            conn.query(ins_query, *(user_data[k] for k in cols))
 
-    def user_delete(self, username):
+    @staticmethod
+    def delete(user_id: int):
         """
-        Удаялет схему пользователя, используется ТОЛЬКО для отладки
-        :param username: имя пользователя, использованное при создании
-        :return: None
+        Метод для удаления пользователя. Используется в отладочных целях.
+        :param user_id: int
+        :return:
         """
-        self.query('DROP SCHEMA "{username}" CASCADE'.format(username=username))
+        del_query = 'DELETE FROM "Orgranizations" WHERE "@Organizations" = $1'
+        with pg.DB(**CONFIG_PARAMS) as conn:
+            conn.query(del_query, user_id)
 
 
 class TableWorker:

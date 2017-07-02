@@ -1,0 +1,7 @@
+{
+  "host": "localhost",
+  "user": "postgres",
+  "passwd": "postgres",
+  "port": 5432,
+  "dbname": "VTBUsers"
+}

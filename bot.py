@@ -2,8 +2,9 @@
 
 import telebot
 from telebot import types
+
+import db_worker as fdbw
 from financial_db_worker import helpers
-import financial_db_worker.db_worker as fdbw
 
 """АРТЕМА КУСОК"""
 
