@@ -1,43 +1,39 @@
-import datetime
-import os
 import pg
+from typing import List, Dict
 from helpers import load_config, prepared, quote2
-
 
 # TODO: Написать подробные комментарии и логирование
 
 # загрузим параметры подключения к БД
 CONFIG_PARAMS = load_config()
+
+# region: Константы сообщений-ошибок
 REQUIRED_PARAM_ERROR = 'Не указаны обязательные параметры!'
+# endregion
 
-class UsersConnection:
-    """Класс-подключение для работы с базой данных VTBUsers"""
-
-    def __init__(self, host='localhost', port=5432, username='postgres', password='postgres'):
-        self.__connection = pg.DB(user=username,
-                                  passwd=password,
-                                  host=host,
-                                  port=port,
-                                  dbname='VTBUsers')
-
-    def close(self):
-        self.__connection.close()
-
-    def query(self, sql_command):
-        return self.__connection.query(sql_command)
-
-    def user_exist(self, username):
-        """
-        Проверяет, существует ли пользователь в базе, т.е. есть ли схема с данным именем
-        :param username: имя пользователя, использованное при создании
-        :return: True/False
-        """
-        check_sql = 'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'{username}\')'.format(username=username)
-        result = self.query(check_sql)
-        return result.dictresult()[0]['exists']
+# Возвращаемый тип результата запроса
+QueryResult = List[Dict]
 
 
 class Users:
+    """
+    Класс для работы с таблицей Organizations.
+    Поля таблицы:
+    @Organizations: int — внутренний идентификатор организации;
+    PhoneNumber: str — номер телефона пользователя в формате 7XXXXXXXXXX (для РФ);
+    TelegramID: int? — идентификатор пользователя Telegram;
+    VTBClient: bool — флаг, является ли пользователь клиентов ВТБ;
+    CLIENT_ID: int — идентификатор клиента ВТБ;
+    CLIENT_SECRET: str — необходимое поле для идентификации клиента;
+    INN: str — ИНН организации;
+    KPPs: List[str] — список КПП организации;
+    OrgName: str — наименование организации;
+    Account: str — номер счёта организации;
+    BankName: str — полное наименование банка организации;
+    BankCity: str — город банка организации;
+    BankBIC: str — БИК банка организации;
+    BankCorrAccount: str — корреспондентский счёт банка.
+    """
 
     @staticmethod
     def new(user_data: dict):
@@ -46,6 +42,8 @@ class Users:
         :param user_data: dict
         Ключи словаря — имена столбцов таблицы.
         Поля TelegramID, PhoneNumber, VTBClient — обязательны.
+        Подробное описание полей см. в описании класса.
+        :type user_data: dict
         :return: None
         """
         cols = user_data.keys()
@@ -55,218 +53,70 @@ class Users:
         query_tmpl = 'INSERT INTO "Organizations" ({columns}) VALUES ({values})'
         ins_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
                                       values=', '.join(prepared(len(cols))))
+        vals = [user_data[k] for k in cols]
         with pg.DB(**CONFIG_PARAMS) as conn:
-            conn.query(ins_query, *(user_data[k] for k in cols))
+            conn.query(ins_query, *vals)
 
     @staticmethod
     def delete(user_id: int):
         """
-        Метод для удаления пользователя. Используется в отладочных целях.
+        Метод для удаления пользователя.
+        !!!Используется в отладочных целях!!!
         :param user_id: int
+        :type user_id: int
         :return:
         """
         del_query = 'DELETE FROM "Orgranizations" WHERE "@Organizations" = $1'
         with pg.DB(**CONFIG_PARAMS) as conn:
             conn.query(del_query, user_id)
 
-
-class TableWorker:
-    """Базовый класс для работы с таблицами базы FinancialStatements"""
-
-    def __init__(self, db_connection, table, conditions, username='test_user'):
+    @staticmethod
+    def get(user_data: dict) -> QueryResult:
         """
-        Конструктор базового класса работы с таблицами
-        :param db_connection: объект класса-подключения к БД
-        :param table: имя таблицы
-        :param conditions: словарь с условиями для построения WHERE в запросах к таблицам
-        :param username: имя пользователя, из таблиц которого будут запрашиваться данные
-        :return: объект класса TableWorker
+        Получить пользователя по данным
+        :param user_data:
+        Ключи словаря — имена столбцов таблицы.
+        Подробное описание полей см. в описании класса.
+        В случае, если передан пустой словарь, метод вернёт пустой список.
+        :type user_data: dict
+        :return: Возвращает список словарей, соответствующих переданным условиям.
+        Ключи словаря — имена столбцов таблицы.
+        Подробное описание полей см. в описании класса.
+        Пустой список означает отсутствие данного пользователя в БД.
+        :rtype List[Dict]
         """
-        self._db = db_connection
-        self._schema = username
-        self.__table = table
-        self.__conds = {'ids': '{k}={v}'.format(k='"@{table}"'.format(table=self.__table),
-                                                v='ANY(ARRAY{})')}
-        self.__conds.update(conditions)
-        columns_query = 'SELECT DISTINCT column_name FROM information_schema.columns WHERE table_name={table}'
-        columns = self._db.query(columns_query.format(table=helpers.quote(self.__table))).getresult()
-        self._columns = [c[0] for c in columns]
+        result = []
+        if user_data:
+            query_tmpl = 'SELECT * FROM "Organizations" WHERE {where_expr}'
+            cols = user_data.keys()
+            conditions = zip(map(quote2, cols), prepared(len(cols)))
+            where_expr = ' AND '.join(' = '.join(cond) for cond in conditions)
+            vals = [user_data[k] for k in cols]
+            sel_query = query_tmpl.format(where_expr=where_expr)
+            with pg.DB(**CONFIG_PARAMS) as conn:
+                result = conn.query(sel_query, *vals).dictresult()
+        return result
 
-    def _insert(self, kvals):
-        keys, vals = [], []
-        for k, v in kvals.items():
-            keys.append(k)
-            vals.append(v)
-        template = 'INSERT INTO "{schema}"."{table}" ({names}) VALUES ({values})'
-        self._db.query(template.format(schema=self._schema,
-                                       names=', '.join(map(helpers.quote2, keys)),
-                                       table=self.__table,
-                                       values=', '.join(map(str, vals))))
-
-    def _update(self, conditions, kvals):
-        template = 'UPDATE "{schema}"."{table}" SET ({keys}) = ({vals}) {condition}'
-        condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
-        keys, vals = [], []
-        for k, v in kvals.items():
-            keys.append(k)
-            vals.append(v)
-        self._db.query(template.format(schema=self._schema,
-                                       keys=', '.join(keys),
-                                       vals=', '.join(vals),
-                                       condition=condition))
-
-    def _get(self, *columns, **conds):
-        """Базовый SELECT-запрос"""
-        join = None
-        order_by = None
-        group_by = None
-        fields = [helpers.quote2(c) for c in columns if c in self._columns]
-        if conds:
-            if conds.get('extra'):
-                join = conds.pop('extra')
-                fields.extend(join.get('x-columns', []))
-                group_by = join.get('group_by')
-                order_by = join.get('order_by')
-        conditions = [self.__conds[key].format(conds[key]) for key in conds]
-        if join:
-            conditions.extend(join.get('x-conditions', []))
-        condition = 'WHERE {}'.format(' AND '.join(conditions)) if conditions else ''
-        template = 'SELECT {columns} FROM "{schema}"."{table}" {alias} {join} {condition} {group_by} {order_by}'
-        select_query = template.format(schema=self._schema,
-                                       table=self.__table,
-                                       columns='*' if not fields else ', '.join(fields),
-                                       condition=condition,
-                                       alias='ops' if join else '',
-                                       join=join['join'] if join else '',
-                                       group_by='GROUP BY {}'.format(', '.join(group_by)) if group_by else '',
-                                       order_by='ORDER BY {}'.format(', '.join(order_by)) if order_by else '')
-        result = self._db.query(select_query)
-        return result.dictresult()
-
-
-class OperationsWorker(TableWorker):
-    """Класс для работы с таблицей Operations"""
-
-    def __init__(self, db_connection, schema):
-        """Смотри описание конструктора класса TableWorker"""
-        # TODO: продумать функционал с единственной датой, или не надо?
-        op_conds = {'start_date': '"OperationDate" >= \'{}\'',
-                    'end_date': '"OperationDate" <= \'{}\'',
-                    'date': '"OperationDate"::date = \'{}\'',
-                    'total_start': '"OperationTotal" > {}',
-                    'total_end': '"OperationTotal" < {}'}
-        super().__init__(db_connection, 'Operations', op_conds, schema)
-
-    def add_operation(self, **kwargs):
+    @staticmethod
+    def update_with_data(user_id: int, user_data: dict):
         """
-        Метод для создания новой операции
-        :param category_id: идентификатор категории
-        :param total: сумма операции
-        :param date: дата-время операции
-        :param comment: комментарий
+        Метод для обновления данных существующего пользователя.
+        :param user_id: int
+        Внутренний идентификатор пользователя (поле @Organizations).
+        :type user_id: int
+        :param user_data: dict
+        Ключи словаря — имена столбцов таблицы.
+        Поля TelegramID, PhoneNumber, VTBClient — обязательны.
+        Подробное описание полей см. в описании класса.
+        :type user_data: dict
         :return: None
         """
-        kvals = {}
-        err_tmpl = 'Не указан обязательный параметр: {param} ({desc})!'
-        if kwargs.get('category_id'):
-            kvals['@Categories'] = kwargs['category_id']
-        else:
-            raise TypeError(err_tmpl.format(param='category_id', desc='идентификатор категории'))
-        if kwargs.get('total'):
-            kvals['OperationTotal'] = kwargs['total']
-        else:
-            raise TypeError(err_tmpl.format(param='total', desc='сумма операции'))
-        kvals['OperationDate'] = helpers.quote(kwargs['date'] if kwargs.get('comment') else datetime.datetime.now())
-        kvals['Commentary'] = helpers.quote(kwargs['comment'] if kwargs.get('comment') else '')
-        self._insert(kvals)
-
-    def get_operations(self, *columns, **conds):
-        return self._get(*columns, **conds)
-
-    def get_by_cat_type(self, **conds):
-        """
-        Метод для получения сумм операций по типу категорий
-        :param start_date: дата, начиная с которой делается подсчёт сумм, в формате строки 'yyyy-mm-dd'
-        :param end_date: дата, до которой делается подсчёт сумм, в формате строки 'yyyy-mm-dd'
-        :param date: дата, за которую делается подсчёт сумм, в формате строки 'yyyy-mm-dd'
-        :param cat_type: тип категории (-1 — расходная, 1 — доходная)
-        :return: список словарей вида {"Name": <имя_категории> -> str,
-                                       "CategoryTotal": <сумма_операций_по_категории_Name> -> float}
-        ПРИМЕЧАНИЕ: требуется указать либо пару параметров start_date и end_date или же один параметр date
-        """
-        required_param_error = 'Не указан один из обязательных параметров: {param} ({desc})!'
-        start_date = conds.get('start_date')
-        end_date = conds.get('end_date')
-        single_date = conds.get('date')
-        cat_type = conds.get('cat_type')
-        if cat_type is None:
-            raise TypeError(required_param_error.format(param='cat_type', desc='тип категории'))
-        if all([start_date, end_date, single_date]):
-            raise TypeError('Указано слишком много параметров!'
-                            'Требуется пара start_date/end_date или только параметр date.')
-        if not ((start_date and end_date) or single_date):
-            raise TypeError(required_param_error.format(param=' или '.join(['start_date', 'end_date', 'date']),
-                                                        desc='временной промежуток подсчёта сумм'))
-        x_query = '''
-        LEFT JOIN "{user}"."Categories" cats
-        ON ops."@Categories" = cats."@Categories"
-        '''.format(user=self._schema)
-        x_conds = ['"CategoryType" = {}'.format(cat_type)]
-        x_columns = ['"Name"', 'SUM("OperationTotal") AS "CategoryTotal"']
-        x_group_by = ['"Name"']
-        x = {'x-columns': x_columns,
-             'join': x_query,
-             'x-conditions': x_conds,
-             'group_by': x_group_by}
-        conds['extra'] = x
-        conds.pop('cat_type')
-        return self._get(**conds)
-
-
-class AccountWorker(TableWorker):
-    """Класс для работы с таблицей Accounts"""
-
-    def __init__(self, db_connection, schema):
-        """Смотри описание конструктора класса TableWorker"""
-        acc_conds = {'acc_id': '"AccountID" = \'{}\''}
-        super().__init__(db_connection, 'Accounts', acc_conds, schema)
-
-    def get_accounts(self, *columns, **conds):
-        # TODO: доработать получение счетов в "красивом" виде + суммирование 58 и 59 счетов
-        return self._get(*columns, **conds)
-
-
-class CategoriesWorker(TableWorker):
-    """Класс для работы с таблицей Categories"""
-
-    def __init__(self, db_connection, schema):
-        """Смотри описание конструктора класса TableWorker"""
-        cat_conds = {'cat_id': '"@Categories = {}"'}
-        super().__init__(db_connection, 'Categories', cat_conds, schema)
-
-    def get_categories(self, *columns, **conds):
-        return self._get(*columns, **conds)
-
-
-class AssetsWorker(TableWorker):
-    """Класс для работы с балансовой таблицей Assets"""
-
-    def __init__(self, db_connection, schema):
-        """Смотри описание конструктора класса TableWorker"""
-        assets_conds = {}
-        super().__init__(db_connection, 'Assets', assets_conds, schema)
-
-    def get_balance(self):
-        """
-        Метод для получения таблицы баланса
-        :return: список словарей вида {"@Assets": <идентификатор_строки_баланса> -> int,
-                                       "Name": <наименование_строки_баланса> -> str,
-                                       "Type": <тип_строки_баланса> -> int, # 1 — актив, 0 — пассив
-                                       "CurrentTotal": <сумма_по_строке_баланса> -> float}
-        """
-        acc_totals = AccountWorker(self._db, self._schema).get_accounts('AccountID', 'AccountTotal')
-        totals = {'@{}'.format(at['AccountID']): at['AccountTotal'] for at in acc_totals}
-        assets = self._get()
-        for a in assets:
-            a['CurrentTotal'] = eval(a.pop('AssetFormula').format(**totals))
-        return assets
+        if user_data:
+            query_tmpl = 'UPDATE "Organizations" SET ({columns}) = ({values}) WHERE "@Organizations" = ${user_param}'
+            cols = user_data.keys()
+            upd_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
+                                          values=', '.join(prepared(len(cols))),
+                                          user_param=len(cols) + 1)
+            vals = [user_data[k] for k in cols] + [user_id]
+            with pg.DB(**CONFIG_PARAMS) as conn:
+                conn.query(upd_query, *vals)
