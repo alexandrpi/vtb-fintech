@@ -1,5 +1,5 @@
 --
--- VTBUsers database creation script
+-- VTBClients database creation script
 --
 
 
@@ -13,18 +13,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: VTBUsers; Type: DATABASE; Schema: -; Owner: postgres
+-- Name: VTBClients; Type: DATABASE; Schema: -; Owner: postgres
 --
 
-DROP DATABASE IF EXISTS "VTBUsers";
+\connect "VTBClients"
 
-CREATE DATABASE "VTBUsers"
-  WITH OWNER = postgres
-    ENCODING = 'UTF8'
-    TABLESPACE = pg_default;
-	
-	
-\connect "VTBUsers"
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
 
 SET search_path = public, pg_catalog;
 
@@ -50,3 +45,27 @@ CREATE TABLE public."Organizations" (
   CONSTRAINT "Organizations_pkey" PRIMARY KEY("@Organizations")
 );
 
+CREATE TABLE public."Drafts" (
+  "@Drafts" BIGSERIAL,
+  "PayerPN" VARCHAR(15),
+  "RecieverPN" VARCHAR(15),
+  "PayerTelegramID" BIGINT,
+  "RecieverTelegramID" BIGINT,
+  "Reason" TEXT,
+  "Total" MONEY,
+  "DateFrom" TIMESTAMP WITH TIME ZONE,
+  "Confirmed" BOOLEAN DEFAULT FALSE,
+  PRIMARY KEY("@Drafts")
+);
+
+COMMENT ON COLUMN public."Drafts"."PayerPN"
+IS 'Телефонный номер отправителя';
+
+COMMENT ON COLUMN public."Drafts"."RecieverPN"
+IS 'Телефонный номер получателя';
+
+COMMENT ON COLUMN public."Drafts"."Reason"
+IS 'Назначение платежа';
+
+COMMENT ON COLUMN public."Drafts"."Total"
+IS 'Сумма платежа';
