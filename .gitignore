@@ -47,7 +47,7 @@ Temporary Items
 .apdisk
 
 # PyCharm project files
-/.idea
+.idea
 /__pycache__
 /logs
 /aws-rds-params.pickle
