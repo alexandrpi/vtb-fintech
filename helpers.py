@@ -1,5 +1,5 @@
 """Различные вспомогательные функциии"""
-import json
+import pickle
 
 token = '145372030:AAFX7Vsv4_CMr7EtaoRpcfTyIfEfBh37Occ'
 
@@ -13,8 +13,8 @@ def quote2(s):
 
 
 def load_config():
-    with open('config.json', 'r') as cfg_file:
-        config = json.load(cfg_file)
+    with open('aws-rds-params.pickle', 'rb') as cfg_file:
+        config = pickle.load(cfg_file)
     return config
 
 

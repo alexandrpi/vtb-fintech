@@ -1,7 +1,0 @@
-{
-  "host": "vtb-clients.cncpsfr8xl23.us-east-2.rds.amazonaws.com",
-  "user": "apostgres",
-  "passwd": "postgres",
-  "port": 5432,
-  "dbname": "VTBClients"
-}

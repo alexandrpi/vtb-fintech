@@ -17,14 +17,11 @@ QueryResult = List[Dict]
 
 class Users:
     """
-    Класс для работы с таблицей Organizations.
+    Класс для работы с таблицей Users — пользователями.
     Поля таблицы:
-    @Organizations: int — внутренний идентификатор организации;
+    @Users: int — идентификатор пользователя в Telegramи;
     PhoneNumber: str — номер телефона пользователя в формате 7XXXXXXXXXX (для РФ);
-    TelegramID: int? — идентификатор пользователя Telegram;
     VTBClient: bool — флаг, является ли пользователь клиентов ВТБ;
-    CLIENT_ID: int — идентификатор клиента ВТБ;
-    CLIENT_SECRET: str — необходимое поле для идентификации клиента;
     INN: str — ИНН организации;
     KPPs: List[str] — список КПП организации;
     OrgName: str — наименование организации;
@@ -41,16 +38,16 @@ class Users:
         Метод для создания нового пользователя
         :param user_data: dict
         Ключи словаря — имена столбцов таблицы.
-        Поля TelegramID, PhoneNumber, VTBClient — обязательны.
+        Поля @Users, PhoneNumber, VTBClient — обязательны.
         Подробное описание полей см. в описании класса.
         :type user_data: dict
         :return: None
         """
         cols = user_data.keys()
-        required = 'TelegramID', 'PhoneNumber', 'VTBClient'
+        required = '@Users', 'PhoneNumber', 'VTBClient'
         if any(param not in cols for param in required):
             raise TypeError(REQUIRED_PARAM_ERROR)
-        query_tmpl = 'INSERT INTO "Organizations" ({columns}) VALUES ({values})'
+        query_tmpl = 'INSERT INTO "Users" ({columns}) VALUES ({values})'
         ins_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
                                       values=', '.join(prepared(len(cols))))
         vals = [user_data[k] for k in cols]
@@ -66,7 +63,7 @@ class Users:
         :type user_id: int
         :return:
         """
-        del_query = 'DELETE FROM "Orgranizations" WHERE "@Organizations" = $1'
+        del_query = 'DELETE FROM "Users" WHERE "@Users" = $1'
         with pg.DB(**CONFIG_PARAMS) as conn:
             conn.query(del_query, user_id)
 
@@ -87,7 +84,7 @@ class Users:
         """
         result = []
         if user_data:
-            query_tmpl = 'SELECT * FROM "Organizations" WHERE {where_expr}'
+            query_tmpl = 'SELECT * FROM "Users" WHERE {where_expr}'
             cols = user_data.keys()
             conditions = zip(map(quote2, cols), prepared(len(cols)))
             where_expr = ' AND '.join(' = '.join(cond) for cond in conditions)
@@ -112,7 +109,7 @@ class Users:
         :return: None
         """
         if user_data:
-            query_tmpl = 'UPDATE "Organizations" SET ({columns}) = ({values}) WHERE "@Organizations" = ${user_param}'
+            query_tmpl = 'UPDATE "Users" SET ({columns}) = ({values}) WHERE "@Users" = ${user_param}'
             cols = user_data.keys()
             upd_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
                                           values=', '.join(prepared(len(cols))),
@@ -120,3 +117,89 @@ class Users:
             vals = [user_data[k] for k in cols] + [user_id]
             with pg.DB(**CONFIG_PARAMS) as conn:
                 conn.query(upd_query, *vals)
+
+
+class Drafts:
+    """
+    Класс для работы с таблицей Drafts — черновиками платёжных поручений.
+    Поля таблицы:
+    @Drafts: int — внутренний идентификатор платёжного поручения;
+    PayerID: int — идентификатор пользователя-плательщика в Telegram / @Users плательщика;
+    RecieverID: int — идентификатор пользователя-получателя в Telegram / @Users получателя;
+    PayerPN: str — номер телефона пользователя-плательщика в формате 7XXXXXXXXXX (для РФ);
+    RecieverPN: str — номер телефона пользователя-получателя в формате 7XXXXXXXXXX (для РФ);
+    Reason: str — назначение платежа;
+    Total: float — сумма платежа;
+    DateFrom: datetime — дата и время создания платежа;
+    Confirmed: bool — подтверждённость платёжного поручения получателем;
+    """
+
+    @staticmethod
+    def new(draft_data: dict):
+        """
+        Метод для создания нового черновика платёжного поручения.
+        :param draft_data:
+        Ключи словаря — имена столбцов таблицы.
+        Поля Reason, Total — обязательны.
+        Одна из пар PayerTelegramID и RecieverTelegramID или PayerPN и RecieverPN — обязательна.
+        Подробное описание полей см. в описании класса.
+        :type draft_data: dict
+        :return: None
+        """
+        cols = draft_data.keys()
+        required = ('Reason', 'Total')
+        required_ids = ('PayerID', 'RecieverID')
+        required_phones = ('PayerPN', 'RecieverPN')
+        if any(param not in cols for param in required):
+            raise TypeError(REQUIRED_PARAM_ERROR)
+        # проверим наличие идентификаторов Telegram или номеров телефонов
+        if any(param not in cols for param in required_ids) \
+                and any(param not in cols for param in required_phones):
+            raise TypeError(REQUIRED_PARAM_ERROR)
+        query_tmpl = 'INSERT INTO "Drafts" ({columns}) VALUES ({values})'
+        ins_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
+                                      values=', '.join(prepared(len(cols))))
+        vals = [draft_data[k] for k in cols]
+        with pg.DB(**CONFIG_PARAMS) as conn:
+            conn.query(ins_query, *vals)
+
+    @staticmethod
+    def get(draft_data: dict) -> QueryResult:
+        """
+        Получить пользователя по данным
+        :param draft_data:
+        Ключи словаря — имена столбцов таблицы.
+        Подробное описание полей см. в описании класса.
+        В случае, если передан пустой словарь, метод вернёт пустой список.
+        :type draft_data: dict
+        :return: Возвращает список словарей, соответствующих переданным условиям.
+        Ключи словаря — имена столбцов таблицы.
+        Подробное описание полей см. в описании класса.
+        Пустой список означает отсутствие данного платёжного поручения в БД.
+        :rtype List[Dict]
+        """
+        result = []
+        if draft_data:
+            query_tmpl = 'SELECT * FROM "Drafts" WHERE {where_expr}'
+            cols = draft_data.keys()
+            conditions = zip(map(quote2, cols), prepared(len(cols)))
+            where_expr = ' AND '.join(' = '.join(cond) for cond in conditions)
+            vals = [draft_data[k] for k in cols]
+            sel_query = query_tmpl.format(where_expr=where_expr)
+            with pg.DB(**CONFIG_PARAMS) as conn:
+                result = conn.query(sel_query, *vals).dictresult()
+        return result
+
+    @staticmethod
+    def confirm(draft_id: int):
+        """
+        Метод для подтверждения платёжного поручения получателем.
+        :param draft_id: int
+        Внутренний идентификатор платёжного поручения (поле @Drafts).
+        :type draft_id: int
+        :return: None
+        """
+        if draft_id:
+            confirm_query = ' UPDATE "Drafts" SET "Confirmed" = TRUE WHERE "@Drafts" = $1'
+            with pg.DB(**CONFIG_PARAMS) as conn:
+                conn.query(confirm_query, draft_id)

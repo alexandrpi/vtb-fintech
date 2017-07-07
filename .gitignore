@@ -51,3 +51,5 @@ Temporary Items
 /test.py
 /__pycache__
 /logs
+/aws-rds-params.pickle
+/sandbox.py

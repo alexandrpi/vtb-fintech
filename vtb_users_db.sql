@@ -27,13 +27,10 @@ SET default_tablespace = '';
 
 SET default_with_oids = false;
 
-CREATE TABLE public."Organizations" (
-  "@Organizations" BIGSERIAL,
+CREATE TABLE public."Users" (
+  "@Users" BIGINT NOT NULL,
   "PhoneNumber" VARCHAR(15) NOT NULL,
-  "TelegramID" BIGINT NOT NULL,
   "VTBClient" BOOLEAN NOT NULL,
-  "CLIENT_ID" BIGINT,
-  "CLIENT_SECRET" TEXT,
   "INN" VARCHAR(12),
   "KPPs" VARCHAR(9) [],
   "OrgName" TEXT,
@@ -49,11 +46,11 @@ CREATE TABLE public."Drafts" (
   "@Drafts" BIGSERIAL,
   "PayerPN" VARCHAR(15),
   "RecieverPN" VARCHAR(15),
-  "PayerTelegramID" BIGINT,
-  "RecieverTelegramID" BIGINT,
+  "PayerID" BIGINT,
+  "RecieverID" BIGINT,
   "Reason" TEXT,
   "Total" MONEY,
-  "DateFrom" TIMESTAMP WITH TIME ZONE,
+  "DateFrom" TIMESTAMP WITH TIME ZONE DEFAULT now(),
   "Confirmed" BOOLEAN DEFAULT FALSE,
   PRIMARY KEY("@Drafts")
 );
