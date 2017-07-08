@@ -26,7 +26,7 @@ def wellcome(message):
 def get(message):
     if message.chat.id == message.contact.user_id:
         bot.send_message(message.chat.id, 'Спасибо за доверее вашего телефона')
-        # пользователь отправил свой телефон 
+        # пользователь отправил свой телефон
     else:  # отправил номер того кому хочет бабки перевести
         try:
             contact_id = message.contact.user_id
@@ -34,7 +34,7 @@ def get(message):
             bot.send_message(contact_id, 'для вас есть перевод.')
         except:
             pass
-            # отправка смсс сообщения 
+            # отправка смсс сообщения
 
 
 @bot.message_handler(content_types=["text"])
@@ -43,7 +43,7 @@ def buttonsSend(message):
     if message.text == 'Авторизация для клиентов ВТБ24':
         keyboard = types.InlineKeyboardMarkup()
         url_button = types.InlineKeyboardButton(text="Перейти",
-                                                url="http://82.202.199.51/auth?response_type=code&scope=all&client_id=770296883857801006116&redirect_uri=http://127.0.0.1:5000/vtb&state={}".format(
+                                                url="http://82.202.199.51/auth?response_type=code&scope=all&client_id=914278823132762424955&redirect_uri=https://tu8fvecqlg.execute-api.us-east-2.amazonaws.com/vtb24/auth&state={}".format(
                                                     message.chat.id))
         keyboard.add(url_button)
         bot.send_message(message.chat.id,
