@@ -13,7 +13,9 @@ class VTBProfile:
                   'redirect_uri': f'https://{CLIENT_HOST}/vtb24/auth&state={user_id}',
                   'client_id': CLIENT_ID,
                   'client_secret': CLIENT_SECRET}
-        return requests.post(f'http://{VTB_HOST}/{route}', data=params).json()
+        print(params)
+        headers = {'Host': CLIENT_HOST}
+        return requests.post(f'http://{VTB_HOST}/{route}', data=params, headers=headers).json()
 
     @staticmethod
     def refresh_token(user_id: int):

@@ -50,5 +50,5 @@ Temporary Items
 .idea
 /__pycache__
 /logs
-/aws-rds-params.pickle
 /sandbox.py
+*.zip
