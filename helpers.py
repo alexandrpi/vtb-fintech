@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-token = '445186548:AAGPAHB7eDP7eXoEe3Zoxqc1uFvTsRahDbU'
-=======
 """Различные вспомогательные функциии"""
 import pickle
 
@@ -23,4 +20,3 @@ def load_config():
 
 def prepared(n):
     return ['$' + str(k) for k in range(1, n + 1)]
->>>>>>> 0790ae2... Столько всего, что я не в состоянии описать, что сделал. Пора спать, время 2 часа ночи, так больше нельзя.
