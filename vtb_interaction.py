@@ -1,15 +1,29 @@
 import requests
+from consts import VTB_HOST, CLIENT_ID, CLIENT_SECRET, CLIENT_HOST
 from db_worker import Users as usr, Drafts as drft
 
-VTB_HOST = 'http://82.202.199.51/{route}'
 
+class VTBProfile:
 
-class VTB:
+    @staticmethod
+    def tokenize(auth_code: str, user_id: str):
+        route = 'token'
+        params = {'grant_type': 'authorization_code',
+                  'code': auth_code,
+                  'redirect_uri': f'https://{CLIENT_HOST}/vtb24/auth&state={user_id}',
+                  'client_id': CLIENT_ID,
+                  'client_secret': CLIENT_SECRET}
+        return requests.post(f'http://{VTB_HOST}/{route}', data=params).json()
+
+    @staticmethod
+    def refresh_token(user_id: int):
+        pass
+
     @staticmethod
     def update_user_data(user_id: int, token):
         route = 'accounts'
         headers = {'Authorization': 'Bearer ' + token}
-        accs = requests.get(VTB_HOST.format(route=route), headers=headers)
+        accs = requests.get(f'http://{VTB_HOST}/{route}', headers=headers)
         if accs.status_code == 200:
             orgs_data = accs.json()
             # Пока что будем исходить из предположения,
@@ -30,7 +44,7 @@ class VTB:
     def new_draft(draft_id, token):
         """Метод для создания нового платёжного поручения"""
         route = 'payment'
-        headers = {'Authorization': 'Bearer ' + token}
+        headers = {'Authorization': f'Bearer {token}'}
         # Получим данные о платёжном поручении
         draft_data = drft.get({'@Draft': draft_id})[0]
         # Получим данные о плательщике и получателе платежа
@@ -58,7 +72,8 @@ class VTB:
                    'payee_bank_correspondent_account': reciever_data['BankCorrAccount']  # корр. счет банка получателя
                    }
         # Отправим запрос на создание платёжного поручения
-        result = requests.post(VTB_HOST.format(route=route), data=payment, headers=headers)
+        result = requests.post(f'http://{VTB_HOST}/{route}', data=payment, headers=headers)
         # TODO: Обрабатывать значения результата создания платёжного поручения
         # Изменим статус платёжного поручения на подверждённый
         drft.confirm(draft_id)
+
