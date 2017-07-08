@@ -48,9 +48,7 @@ Temporary Items
 
 # PyCharm project files
 .idea
-/test.py
 /__pycache__
 /logs
 /aws-rds-params.pickle
 /sandbox.py
-/test123.py
