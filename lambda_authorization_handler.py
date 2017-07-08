@@ -1,9 +1,8 @@
 from vtb_interaction import VTBProfile as vtbp
 
 
-def main(event, context):
+def entry(event, context):
     user_id = event['state']
     auth_code = event['code']
-    if vtbp.tokenize(auth_code, user_id):
-        # Публикация события успешного получения токена
-        pass
+    # TODO: Публикация события успешного получения токена
+    return vtbp.tokenize(auth_code, user_id)
