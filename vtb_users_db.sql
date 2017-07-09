@@ -39,6 +39,8 @@ CREATE TABLE public."Users" (
   "BankCity" TEXT,
   "BankBIC" VARCHAR(9),
   "BankCorrAccount" VARCHAR(20),
+  "AccessToken" VARCHAR(64),
+  "TokenExpires" TIMESTAMP WITH TIME ZONE,
   CONSTRAINT "Organizations_pkey" PRIMARY KEY("@Organizations")
 );
 
