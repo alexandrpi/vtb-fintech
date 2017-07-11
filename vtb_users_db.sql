@@ -41,7 +41,7 @@ CREATE TABLE public."Users" (
   "BankCorrAccount" VARCHAR(20),
   "AccessToken" VARCHAR(64),
   "TokenExpires" TIMESTAMP WITH TIME ZONE,
-  CONSTRAINT "Organizations_pkey" PRIMARY KEY("@Organizations")
+  CONSTRAINT "Organizations_pkey" PRIMARY KEY("@Users")
 );
 
 CREATE TABLE public."Drafts" (
