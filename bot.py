@@ -7,7 +7,7 @@ from db_worker import Users as usr
 
 bot = telebot.TeleBot(token, threaded=False)
 
-tamplate = ['Авторизация для клиентов ВТБ24', 'операции']
+tamplate = ['Авторизация для клиентов ВТБ24', 'Операции']
 lor1 = 'доров'
 lor2 = 'прив'
 
@@ -28,12 +28,15 @@ def welcome(message):
 
 @bot.message_handler(content_types=['contact'])
 def get(message):
-    print("{} {}".format(message.chat.id, message.contact.user_id))
+    # print("{} {}".format(message.chat.id, message.contact.user_id))
     if message.chat.id == message.contact.user_id:
-        usr.new({"@Users": message.chat.id, "PhoneNumber": message.contact.phone_number, "VTBClient": False})
+        vtb_user = (message.contact.phone_number, 1)
+        not_vtb_user = (message.contact.phone_number, 0)
+        # usr.new({"@Users": message.chat.id, "PhoneNumber": message.contact.phone_number, "VTBClient": False})
+        print(type(json.dumps(not_vtb_user)))
         keyboard = types.InlineKeyboardMarkup()
-        button1 = types.InlineKeyboardButton(text="Да", callback_data="flag_True")
-        button2 = types.InlineKeyboardButton(text="Нет", callback_data="flag_False")
+        button1 = types.InlineKeyboardButton(text="Да", callback_data=str(vtb_user))
+        button2 = types.InlineKeyboardButton(text="Нет", callback_data=str(not_vtb_user))
         keyboard.add(button1, button2)
         bot.send_message(message.chat.id, 'Спасибо за доверие вашего телефона.\n Вы являетесь клиентом банка ВТБ?',
                          reply_markup=keyboard)
@@ -89,17 +92,18 @@ def callback_inline(call):
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=lor1,
                               reply_markup=kb)
 
-    if call.data == "flag_True":
-        usr.update_with_data(call.message.chat.id, {"VTBClient": True})
-
+    if eval(call.data)[1]:
+        usr.new({"@Users": call.message.chat.id, "PhoneNumber": eval(call.data)[0], "VTBClient": True})
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Поздравляю, регистрация завершена! Вам доступен полный функционал")
         welcome(call.message)
 
-    if call.data == "flag_False":
+    if not eval(call.data)[1]:
+        usr.new({"@Users": call.message.chat.id, "PhoneNumber": eval(call.data)[0], "VTBClient": False})
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Регистрация завершена. Вы не являетесь клиентом банка ВТБ24, ваш функционал урезан.")
         welcome(call.message)
+
 
 def main(content, some_other_arg):
     print('new request came:\n{}'.format(content))
