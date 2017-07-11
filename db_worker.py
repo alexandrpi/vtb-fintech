@@ -19,7 +19,7 @@ class Users:
     """
     Класс для работы с таблицей Users — пользователями.
     Поля таблицы:
-    @Users: int — идентификатор пользователя в Telegramи;
+    @Users: int — идентификатор пользователя в Telegram;
     PhoneNumber: str — номер телефона пользователя в формате 7XXXXXXXXXX (для РФ);
     VTBClient: bool — флаг, является ли пользователь клиентов ВТБ;
     INN: str — ИНН организации;
@@ -36,7 +36,7 @@ class Users:
     def new(user_data: dict):
         """
         Метод для создания нового пользователя
-        :param user_data: dict
+        :param user_data:
         Ключи словаря — имена столбцов таблицы.
         Поля @Users, PhoneNumber, VTBClient — обязательны.
         Подробное описание полей см. в описании класса.
@@ -59,7 +59,7 @@ class Users:
         """
         Метод для удаления пользователя.
         !!!Используется в отладочных целях!!!
-        :param user_id: int
+        :param user_id: Telegram-идентификатор пользователя.
         :type user_id: int
         :return:
         """
@@ -98,12 +98,11 @@ class Users:
     def update_with_data(user_id: int, user_data: dict):
         """
         Метод для обновления данных существующего пользователя.
-        :param user_id: int
-        Внутренний идентификатор пользователя (поле @Organizations).
+        :param user_id:
+        Telegram-идентификатор пользователя (поле @Users).
         :type user_id: int
         :param user_data: dict
         Ключи словаря — имена столбцов таблицы.
-        Поля TelegramID, PhoneNumber, VTBClient — обязательны.
         Подробное описание полей см. в описании класса.
         :type user_data: dict
         :return: None
@@ -135,7 +134,7 @@ class Drafts:
     """
 
     @staticmethod
-    def new(draft_data: dict):
+    def new(draft_data: dict) -> int:
         """
         Метод для создания нового черновика платёжного поручения.
         :param draft_data:
@@ -144,8 +143,10 @@ class Drafts:
         Одна из пар PayerTelegramID и RecieverTelegramID или PayerPN и RecieverPN — обязательна.
         Подробное описание полей см. в описании класса.
         :type draft_data: dict
-        :return: None
+        :return: Идентификатор созданного платёжного поручения.
+        :rtype: int
         """
+        draft_id = 0
         cols = draft_data.keys()
         required = ('Reason', 'Total')
         required_ids = ('PayerID', 'RecieverID')
@@ -161,12 +162,13 @@ class Drafts:
                                       values=', '.join(prepared(len(cols))))
         vals = [draft_data[k] for k in cols]
         with pg.DB(**CONFIG_PARAMS) as conn:
-            conn.query(ins_query, *vals)
+            draft_id = conn.query(ins_query, *vals)
+        return draft_id
 
     @staticmethod
     def get(draft_data: dict) -> QueryResult:
         """
-        Получить пользователя по данным
+        Получить платёжные поручения по данным
         :param draft_data:
         Ключи словаря — имена столбцов таблицы.
         Подробное описание полей см. в описании класса.
@@ -191,15 +193,23 @@ class Drafts:
         return result
 
     @staticmethod
-    def confirm(draft_id: int):
+    def update_with_data(draft_id: int, draft_data: dict):
         """
-        Метод для подтверждения платёжного поручения получателем.
-        :param draft_id: int
-        Внутренний идентификатор платёжного поручения (поле @Drafts).
+        Метод для обновления данных платёжного поручения.
+        :param draft_id: Внутренний идентификатор платёжного поручения (поле @Drafts).
         :type draft_id: int
+        :param draft_data: Данные о платёжном поручении
+        Ключи словаря — имена столбцов таблицы.
+        Подробное описание полей см. в описании класса.
         :return: None
         """
         if draft_id:
-            confirm_query = ' UPDATE "Drafts" SET "Confirmed" = TRUE WHERE "@Drafts" = $1'
+            query_tmpl = 'UPDATE "Drafts" SET ({columns}) = ({values}) WHERE "@Drafts" = ${draft_param}'
+            cols = draft_data.keys()
+            upd_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
+                                          values=', '.join(prepared(len(cols))),
+                                          draft_param=len(cols) + 1)
+            vals = [draft_data[k] for k in cols] + [draft_id]
             with pg.DB(**CONFIG_PARAMS) as conn:
-                conn.query(confirm_query, draft_id)
+                conn.query(upd_query, *vals)
+
