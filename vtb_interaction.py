@@ -22,7 +22,10 @@ class VTBProfile:
             token_data = {'AccessToken': resp_data['access_token'],
                           'TokenExpires': datetime.now() + timedelta(seconds=resp_data['expires_in'])}
             usr.update_with_data(user_id, token_data)
-        return resp_data
+        file = open('index.html', 'r')
+        text_html = file.read()
+        file.close()
+        return text_html
 
     @staticmethod
     def update_user_data(user_id: int, access_token):

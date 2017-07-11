@@ -1,7 +1,7 @@
 """Различные вспомогательные функциии"""
 import pickle
 
-token = '145372030:AAFX7Vsv4_CMr7EtaoRpcfTyIfEfBh37Occ'
+token = '445186548:AAGPAHB7eDP7eXoEe3Zoxqc1uFvTsRahDbU'
 
 
 def quote(s):
