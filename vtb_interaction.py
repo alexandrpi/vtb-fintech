@@ -28,7 +28,7 @@ class VTBProfile:
         return text_html
 
     @staticmethod
-    def update_user_data(user_id: int, access_token):
+    def update_user_data(user_id: int, access_token: str):
         route = 'accounts'
         headers = {'Authorization': f'Bearer {access_token}',
                    'Host': CLIENT_HOST}
@@ -50,7 +50,7 @@ class VTBProfile:
                 usr.update_with_data(user_id, user_data)
 
     @staticmethod
-    def new_draft(draft_id, access_token):
+    def new_draft(draft_id: int, access_token: str):
         """Метод для создания нового платёжного поручения"""
         route = 'payment'
         headers = {'Authorization': f'Bearer {access_token}',
