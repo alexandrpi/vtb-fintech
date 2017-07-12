@@ -148,21 +148,16 @@ class Drafts:
         """
         draft_id = 0
         cols = draft_data.keys()
-        required = ('Reason', 'Total')
-        required_ids = ('PayerID', 'RecieverID')
-        required_phones = ('PayerPN', 'RecieverPN')
+        required = ('PayerID',)
         if any(param not in cols for param in required):
             raise TypeError(REQUIRED_PARAM_ERROR)
-        # проверим наличие идентификаторов Telegram или номеров телефонов
-        if any(param not in cols for param in required_ids) \
-                and any(param not in cols for param in required_phones):
-            raise TypeError(REQUIRED_PARAM_ERROR)
-        query_tmpl = 'INSERT INTO "Drafts" ({columns}) VALUES ({values})'
-        ins_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
-                                      values=', '.join(prepared(len(cols))))
-        vals = [draft_data[k] for k in cols]
-        with pg.DB(**CONFIG_PARAMS) as conn:
-            draft_id = conn.query(ins_query, *vals)
+        if draft_data:
+            query_tmpl = 'INSERT INTO "Drafts" ({columns}) VALUES ({values}) RETURNING "@Drafts"'
+            ins_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
+                                          values=', '.join(prepared(len(cols))))
+            vals = [draft_data[k] for k in cols]
+            with pg.DB(**CONFIG_PARAMS) as conn:
+                draft_id = conn.query(ins_query, *vals).dictresult()[0]['@Drafts']
         return draft_id
 
     @staticmethod
@@ -201,6 +196,7 @@ class Drafts:
         :param draft_data: Данные о платёжном поручении
         Ключи словаря — имена столбцов таблицы.
         Подробное описание полей см. в описании класса.
+        :type draft_data: dict
         :return: None
         """
         if draft_id:
@@ -213,3 +209,33 @@ class Drafts:
             with pg.DB(**CONFIG_PARAMS) as conn:
                 conn.query(upd_query, *vals)
 
+    @staticmethod
+    def update_last_with_data(user_id: int, draft_data: dict):
+        """
+        Метод для обновления данных платёжного поручения.
+        :param user_id: Telegram-идентификатор пользователя, создавшего платёжное поручение (поле PayerID).
+        :type user_id: int
+        :param draft_data: Данные о платёжном поручении
+        Ключи словаря — имена столбцов таблицы.
+        Подробное описание полей см. в описании класса.
+        :type draft_data: dict
+        :return: None
+        """
+        if user_id and draft_data:
+            query_tmpl = '''
+            WITH DID AS (
+            SELECT "@Drafts" FROM "Drafts"
+            WHERE "PayerID" = ${user_param}
+            ORDER BY "DateFrom" DESC
+            LIMIT 1
+            )
+            UPDATE "Drafts" SET ({columns}) = ({values})
+            WHERE "@Drafts" = (SELECT "@Drafts" FROM DID)
+            '''
+            cols = draft_data.keys()
+            upd_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
+                                          values=', '.join(prepared(len(cols))),
+                                          user_param=len(cols) + 1)
+            vals = [draft_data[k] for k in cols] + [user_id]
+            with pg.DB(**CONFIG_PARAMS) as conn:
+                conn.query(upd_query, *vals)
