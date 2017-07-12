@@ -17,7 +17,7 @@ def takePayerPN(message):
         contact_id = message.contact.user_id
         phone_number = message.contact.phone_number
         from db_worker import Drafts as drf
-        drf.update_last_with_data(message.chat.id, {"RecieverID": contact_id, "RecieverPN": phone_number})
+        drf.update_last_with_data(message.chat.id, {"ReceiverID": contact_id, "ReceiverPN": phone_number})
         kb = types.InlineKeyboardMarkup()
         yesBut = types.InlineKeyboardButton(text='Принять', callback_data='yes,{}'.format(message.chat.id))
         noBut = types.InlineKeyboardButton(text='Отклонить', callback_data='no,{}'.format(message.chat.id))

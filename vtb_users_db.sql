@@ -47,8 +47,8 @@ CREATE TABLE public."Users" (
 CREATE TABLE public."Drafts" (
   "@Drafts" BIGSERIAL,
   "PayerID" BIGINT,
-  "RecieverID" BIGINT,
-  "RecieverPN" VARCHAR(15),
+  "ReceiverID" BIGINT,
+  "ReceiverPN" VARCHAR(15),
   "Reason" TEXT,
   "Total" MONEY,
   "DateFrom" TIMESTAMP DEFAULT now(),
@@ -58,7 +58,7 @@ CREATE TABLE public."Drafts" (
 
 SET client_encoding = 'UTF-8';
 
-COMMENT ON COLUMN public."Drafts"."RecieverPN"
+COMMENT ON COLUMN public."Drafts"."ReceiverPN"
 IS 'Номер телефона получателя платежа';
 
 COMMENT ON COLUMN public."Drafts"."Reason"
