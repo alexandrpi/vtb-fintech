@@ -139,8 +139,7 @@ class Drafts:
         Метод для создания нового черновика платёжного поручения.
         :param draft_data:
         Ключи словаря — имена столбцов таблицы.
-        Поля Reason, Total — обязательны.
-        Одна из пар PayerTelegramID и RecieverTelegramID или PayerPN и RecieverPN — обязательна.
+        Поле PayerID — обязательное.
         Подробное описание полей см. в описании класса.
         :type draft_data: dict
         :return: Идентификатор созданного платёжного поручения.
