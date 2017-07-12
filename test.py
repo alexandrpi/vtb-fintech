@@ -16,14 +16,23 @@
 # from helpers import token
 #
 # bot = telebot.TeleBot(token)
-#
+# from datetime import datetime
+# z=datetime.strptime( "2009-11-12 23:18:53", "%Y-%m-%d %H:%M:%S" )
+# print(z)
+# a = datetime.now()
+# print(a)
+# print(a>z)
+z = "asdas,dasd"
+a = z.split()
+print(a)
+
 #
 # bot.remove_webhook()
 # bot.set_webhook(url='https://tu8fvecqlg.execute-api.us-east-2.amazonaws.com/vtb24/AAGPAHB7eDP7eXoEe3Zoxqc1uFvTsRahDbU')
 tb_user = (89999999999,1)
-import sys
-import json
-z = '{"d": ["7XXXXXXXXXX", 1]}'
-a = sys.getsizeof(z)
-b = sys.getsizeof(str(tb_user))
-print("{} {} {}".format(a,eval(str(tb_user)),tb_user[0]))
+# import sys
+# import json
+# z = '{"d": ["7XXXXXXXXXX", 1]}'
+# a = sys.getsizeof(z)
+# b = sys.getsizeof(str(tb_user))
+# print("{} {} {}".format(a,eval(str(tb_user)),tb_user[0]))
