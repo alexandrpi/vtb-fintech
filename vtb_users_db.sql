@@ -40,28 +40,26 @@ CREATE TABLE public."Users" (
   "BankBIC" VARCHAR(9),
   "BankCorrAccount" VARCHAR(20),
   "AccessToken" VARCHAR(64),
-  "TokenExpires" TIMESTAMP WITH TIME ZONE,
-  CONSTRAINT "Organizations_pkey" PRIMARY KEY("@Users")
+  "TokenExpires" TIMESTAMP,
+  CONSTRAINT "Users_pkey" PRIMARY KEY("@Users")
 );
 
 CREATE TABLE public."Drafts" (
   "@Drafts" BIGSERIAL,
-  "PayerPN" VARCHAR(15),
-  "RecieverPN" VARCHAR(15),
   "PayerID" BIGINT,
   "RecieverID" BIGINT,
+  "RecieverPN" VARCHAR(15),
   "Reason" TEXT,
   "Total" MONEY,
-  "DateFrom" TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  "DateFrom" TIMESTAMP DEFAULT now(),
   "Confirmed" BOOLEAN DEFAULT FALSE,
   PRIMARY KEY("@Drafts")
 );
 
-COMMENT ON COLUMN public."Drafts"."PayerPN"
-IS 'Телефонный номер отправителя';
+SET client_encoding = 'UTF-8';
 
 COMMENT ON COLUMN public."Drafts"."RecieverPN"
-IS 'Телефонный номер получателя';
+IS 'Номер телефона получателя платежа';
 
 COMMENT ON COLUMN public."Drafts"."Reason"
 IS 'Назначение платежа';
