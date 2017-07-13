@@ -13,6 +13,7 @@ lor2 = 'прив'
 
 
 def takePayerPN(message):
+<<<<<<< HEAD
     if message.chat.id == message.contact.user_id:
         text_info = bot.send_message(message.chat.id, "Нельзя отправить платёж самому себе.")
         bot.register_next_step_handler(text_info, takePayerPN)
@@ -30,6 +31,21 @@ def takePayerPN(message):
             bot.send_message(message.chat.id, 'Запрос отправлен.')
         except:
             bot.send_message(message.chat.id, "Некорректный ввод. Начните с начала.")
+=======
+    try:
+        contact_id = message.contact.user_id
+        phone_number = message.contact.phone_number
+        from db_worker import Drafts as drf
+        drf.update_last_with_data(message.chat.id, {"ReceiverID": contact_id, "ReceiverPN": phone_number})
+        kb = types.InlineKeyboardMarkup()
+        yesBut = types.InlineKeyboardButton(text='Принять', callback_data='yes,{}'.format(message.chat.id))
+        noBut = types.InlineKeyboardButton(text='Отклонить', callback_data='no,{}'.format(message.chat.id))
+        kb.add(yesBut, noBut)
+        bot.send_message(contact_id, 'Для вас есть перевод.'.format(), reply_markup=kb)
+        bot.send_message(message.chat.id, 'Запрос отправлен.')
+    except:
+        bot.send_message(message.chat.id, "Некорректный ввод. Начните с начала.")
+>>>>>>> origin/telegram
 
 
 def sendSum(message):
