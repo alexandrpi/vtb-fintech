@@ -80,7 +80,7 @@ class Users:
         Ключи словаря — имена столбцов таблицы.
         Подробное описание полей см. в описании класса.
         Пустой список означает отсутствие данного пользователя в БД.
-        :rtype List[Dict]
+        :rtype: List[Dict]
         """
         result = []
         if user_data:
@@ -172,7 +172,7 @@ class Drafts:
         Ключи словаря — имена столбцов таблицы.
         Подробное описание полей см. в описании класса.
         Пустой список означает отсутствие данного платёжного поручения в БД.
-        :rtype List[Dict]
+        :rtype: List[Dict]
         """
         result = []
         if draft_data:
@@ -211,15 +211,19 @@ class Drafts:
     @staticmethod
     def update_last_with_data(user_id: int, draft_data: dict):
         """
-        Метод для обновления данных платёжного поручения.
+        Метод для обновления данных последнего черновика платёжного поручения,
+        созданного заданным пользователем.
         :param user_id: Telegram-идентификатор пользователя, создавшего платёжное поручение (поле PayerID).
         :type user_id: int
         :param draft_data: Данные о платёжном поручении
         Ключи словаря — имена столбцов таблицы.
         Подробное описание полей см. в описании класса.
         :type draft_data: dict
-        :return: None
+        :return: Внутренний идентификатор обновлённого платёжного поручения (поле @Drafts).
+        В случае неуспеха возвращает 0.
+        :rtype: int
         """
+        updated_draft_id = 0
         if user_id and draft_data:
             query_tmpl = '''
             WITH DID AS (
@@ -230,6 +234,7 @@ class Drafts:
             )
             UPDATE "Drafts" SET ({columns}) = ({values})
             WHERE "@Drafts" = (SELECT "@Drafts" FROM DID)
+            RETURNING "@Drafts"
             '''
             cols = draft_data.keys()
             upd_query = query_tmpl.format(columns=', '.join(quote2(k) for k in cols),
@@ -237,4 +242,5 @@ class Drafts:
                                           user_param=len(cols) + 1)
             vals = [draft_data[k] for k in cols] + [user_id]
             with pg.DB(**CONFIG_PARAMS) as conn:
-                conn.query(upd_query, *vals)
+                updated_draft_id = conn.query(upd_query, *vals).dictresult()[0]['@Drafts']
+        return updated_draft_id
