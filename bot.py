@@ -21,9 +21,11 @@ def takePayerPN(message):
             contact_id = message.contact.user_id
             phone_number = message.contact.phone_number
             from db_worker import Drafts as drf
-            drf.update_last_with_data(message.chat.id, {"ReceiverID": contact_id, "ReceiverPN": phone_number})
+            draft_id = drf.update_last_with_data(message.chat.id,
+                                                 {"ReceiverID": contact_id, "ReceiverPN": phone_number})
             kb = types.InlineKeyboardMarkup()
-            yesBut = types.InlineKeyboardButton(text='Принять', callback_data='yes,{}'.format(message.chat.id))
+            yesBut = types.InlineKeyboardButton(text='Принять',
+                                                callback_data='yes,{},{}'.format(message.chat.id, draft_id))
             noBut = types.InlineKeyboardButton(text='Отклонить', callback_data='no,{}'.format(message.chat.id))
             kb.add(yesBut, noBut)
             bot.send_message(contact_id, 'Для вас есть перевод.'.format(), reply_markup=kb)
@@ -68,11 +70,9 @@ def welcome(message):
 @bot.message_handler(content_types=['contact'])
 def get(message):
     if message.chat.id == message.contact.user_id:
-        vtb_user = (message.contact.phone_number, 1)
-        not_vtb_user = (message.contact.phone_number, 0)
         keyboard = types.InlineKeyboardMarkup()
-        button1 = types.InlineKeyboardButton(text="Да", callback_data=str(vtb_user))
-        button2 = types.InlineKeyboardButton(text="Нет", callback_data=str(not_vtb_user))
+        button1 = types.InlineKeyboardButton(text="Да", callback_data="vtb_user,{}".format(message.contact.phone_number))
+        button2 = types.InlineKeyboardButton(text="Нет", callback_data="not_vtb_user,{}".format(message.contact.phone_number))
         keyboard.add(button1, button2)
         bot.send_message(message.chat.id, 'Спасибо за доверие вашего телефона.\n Вы являетесь клиентом банка ВТБ?',
                          reply_markup=keyboard)
@@ -121,71 +121,73 @@ def callback_inline(call):
                               reply_markup=kb)
 
     if call.data.split(",")[0] == "yes":
-        sender_id = call.data.split(",")[1]
+        sender_id = int(call.data.split(",")[1])
+        draft_id = int(call.data.split(",")[2])
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Спасибо")
         from datetime import datetime
         try:
             if (usr.get({"@Users": sender_id}))[0]['TokenExpires'] < datetime.now():
                 markup = types.InlineKeyboardMarkup()
-                bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token")
+                bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token,{}".format(draft_id))
                 markup.add(bt)
                 bot.send_message(sender_id, "Для завершения операции необходимо авторизоваться в личном кабинете.",
                                  reply_markup=markup)
             else:
-                # vtb_token = usr.get({"@Users": sender_id})[0]['TokenExpires']
-                # from vtb_interaction import VTBProfile as vtp
-                # vtp.new_draft(vtb_token)
+                vtb_token = usr.get({"@Users": sender_id})[0]['AccessToken']
+                from vtb_interaction import VTBProfile as vtp
+                vtp.new_draft(draft_id, vtb_token)
                 bot.send_message(sender_id, "Перевод совершен.")
         except:
             markup = types.InlineKeyboardMarkup()
-            bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token")
+            bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token,{}".format(draft_id))
             markup.add(bt)
             bot.send_message(sender_id, "Для завершения операции необходимо авторизоваться в личном кабинете.",
                              reply_markup=markup)
 
-    if call.data == "got_token":
+    if call.data.split(",")[0] == "got_token":
+        draft_id = int(call.data.split(",")[1])
         try:
             from datetime import datetime
             if (usr.get({"@Users": call.message.chat.id}))[0]['TokenExpires'] < datetime.now():
                 markup = types.InlineKeyboardMarkup()
-                bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token")
+                bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token,{}".format(draft_id))
                 markup.add(bt)
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text="Для завершения операции необходимо авторизоваться в личном кабинете.",
                                       reply_markup=markup)
             else:
-                # vtb_token = usr.get({"@Users": call.message.chat.id})[0]['TokenExpires']
-                # from vtb_interaction import VTBProfile as vtp
-                # vtp.new_draft(vtb_token)
+                vtb_token = usr.get({"@Users": call.message.chat.id})[0]['AccessToken']
+                from vtb_interaction import VTBProfile as vtp
+                vtp.new_draft(draft_id, vtb_token)
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text="Перевод совершен.")
         except:
             markup = types.InlineKeyboardMarkup()
-            bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token")
+            bt = types.InlineKeyboardButton(text="Подтвердить", callback_data="got_token,{}".format(draft_id))
             markup.add(bt)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Для завершения операции необходимо авторизоваться в личном кабинете.",
                                   reply_markup=markup)
 
     if call.data.split(",")[0] == "no":
-        sender_id = call.data.split(",")[1]
+        sender_id = int(call.data.split(",")[1])
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Спасибо")
         bot.send_message(sender_id, "Перевод отклонен получателем.")
 
-    if eval(call.data)[1]:
-        usr.new({"@Users": call.message.chat.id, "PhoneNumber": eval(call.data)[0], "VTBClient": True})
+    if call.data.split(",")[0] == "vtb_user":
+        phone_num = int(call.data.split(",")[1])
+        usr.new({"@Users": call.message.chat.id, "PhoneNumber": phone_num, "VTBClient": True})
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Поздравляю, регистрация завершена! Вам доступен полный функционал")
         welcome(call.message)
 
-    if not eval(call.data)[1]:
-        usr.new({"@Users": call.message.chat.id, "PhoneNumber": eval(call.data)[0], "VTBClient": False})
+    if call.data.split(",")[0] == "not_vtb_user":
+        phone_num = int(call.data.split(",")[1])
+        usr.new({"@Users": call.message.chat.id, "PhoneNumber": phone_num, "VTBClient": False})
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Регистрация завершена. Вы не являетесь клиентом банка ВТБ24, ваш функционал урезан.")
         welcome(call.message)
 
 
 def main(content, some_other_arg):
-    print('new request came:\n{}'.format(content))
-    print('content param type: {}'.format(type(content)))
     bot.process_new_updates([telebot.types.Update.de_json(json.dumps(content))])

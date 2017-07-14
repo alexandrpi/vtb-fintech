@@ -73,7 +73,7 @@ class VTBProfile:
         headers = {'Authorization': f'Bearer {access_token}',
                    'Host': CLIENT_HOST}
         # Получим данные о платёжном поручении
-        draft_data = drft.get({'@Draft': draft_id})[0]
+        draft_data = drft.get({'@Drafts': draft_id})[0]
         # Получим данные о плательщике и получателе платежа
         payer_data = usr.get({'@Users': draft_data['PayerID']})[0]
         if not payer_data['INN']:
