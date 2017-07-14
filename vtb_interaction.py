@@ -115,6 +115,8 @@ class VTBProfile:
             drft.update_with_data(draft_id, {'Confirmed': True})
         else:
             # TODO: Нужно умнее обрабатывать значения результата!!!
-            print(resp.status_code, resp.json())
-            raise Exception('SOMETHING TERRIBLE HAPPEND, WHEN I WAS TRYING TO CREATE A DRAFT!!!')
+            # Просто залогируем угрожающее сообщение
+            print('SOMETHING TERRIBLE HAPPEND, WHEN I WAS TRYING TO CREATE A DRAFT!!!')
+        # В любом случае залогируем код ответа и описание результата
+        print('HTTP status: {}\nVTB API response: {}'.format(resp.status_code, resp.json()))
 
