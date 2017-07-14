@@ -40,7 +40,7 @@ CREATE TABLE public."Users" (
   "BankBIC" VARCHAR(9),
   "BankCorrAccount" VARCHAR(20),
   "AccessToken" VARCHAR(64),
-  "TokenExpires" TIMESTAMP,
+  "TokenExpires" TIMESTAMP DEFAULT now(),
   CONSTRAINT "Users_pkey" PRIMARY KEY("@Users")
 );
 
