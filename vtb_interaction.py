@@ -65,7 +65,7 @@ class VTBProfile:
     def new_draft(draft_id: int, access_token: str):
         """Метод для создания нового платёжного поручения"""
         # Здесь по-идиотски получается всё:
-        # 1) Артём мне даёт токен, т.е. идёт за ним в БД;
+        # 1) Артём мне даёт токен, т.е. идёт за ним в БД для начала;
         # 2) Я в свою очередь опять иду в БД и в итоге мы получаем лишний запрос;
         # FIXME: Нужно перенести проверку токена в данный метод.
         # Данная функция должна возвращать разные коды завершения (успешно, неуспешно, токен просрочен и т.д.)
@@ -82,7 +82,7 @@ class VTBProfile:
             user_update = VTBProfile.get_user_data(access_token)
             if user_update:
                 # Если данные успешно получены, пробросим их дальше и обновим в БД
-                payer_data = user_update
+                payer_data.update(user_update)
                 usr.update_with_data(draft_data['PayerID'], user_update)
             else:
                 return
