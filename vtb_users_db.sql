@@ -32,16 +32,16 @@ CREATE TABLE public."Users" (
   "PhoneNumber" VARCHAR(15) NOT NULL,
   "VTBClient" BOOLEAN NOT NULL,
   "INN" VARCHAR(12),
-  "KPPs" TEXT,
+  "KPPs" TEXT DEFAULT '',
   "OrgName" TEXT,
   "Account" VARCHAR(20),
-  "BankName" TEXT,
-  "BankCity" TEXT,
+  "BankName" TEXT DEFAULT '',
+  "BankCity" TEXT DEFAULT '',
   "BankBIC" VARCHAR(9),
-  "BankCorrAccount" VARCHAR(20),
+  "BankCorrAccount" VARCHAR(20) DEFAULT '',
   "AccessToken" VARCHAR(64),
   "TokenExpires" TIMESTAMP DEFAULT now(),
-  CONSTRAINT "Users_pkey" PRIMARY KEY("@Users")
+  PRIMARY KEY("@Users")
 );
 
 CREATE TABLE public."Drafts" (
