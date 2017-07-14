@@ -93,7 +93,7 @@ class VTBProfile:
                    'purpose': draft_data['Reason'],  # назначение платежа
                    'payer_name': payer_data['OrgName'],  # наименование отправителя
                    'payer_inn': payer_data['INN'],  # ИНН отправителя
-                   'payer_kpp': payer_data['KPP'],  # КПП отправителя
+                   'payer_kpp': payer_data['KPPs'],  # КПП отправителя
                    'payer_account': payer_data['Account'],  # номер счета отправителя
                    'payer_bank_bic': payer_data['BankBIC'],  # БИК банка отправителя
                    'payer_bank_name': payer_data['BankName'],  # наименование банка отправителя
@@ -101,7 +101,7 @@ class VTBProfile:
                    'payer_bank_correspondent_account': payer_data['BankCorrAccount'],  # корр. счет банка отправителя
                    'payee_name': receiver_data['OrgName'],  # наименование получателя
                    'payee_inn': receiver_data['INN'],  # ИНН получателя
-                   'payee_kpp': receiver_data['KPP'],  # КПП получателя
+                   'payee_kpp': receiver_data['KPPs'],  # КПП получателя
                    'payee_account': receiver_data['Account'],  # номер счета получателя
                    'payee_bank_bic': receiver_data['BankBIC'],  # БИК банка получателя
                    'payee_bank_name': receiver_data['BankName'],  # наименование банка получателя
