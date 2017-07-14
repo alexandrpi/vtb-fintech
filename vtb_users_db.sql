@@ -32,7 +32,7 @@ CREATE TABLE public."Users" (
   "PhoneNumber" VARCHAR(15) NOT NULL,
   "VTBClient" BOOLEAN NOT NULL,
   "INN" VARCHAR(12),
-  "KPPs" VARCHAR(9) [],
+  "KPPs" TEXT,
   "OrgName" TEXT,
   "Account" VARCHAR(20),
   "BankName" TEXT,
